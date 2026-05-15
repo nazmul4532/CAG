@@ -45,7 +45,7 @@ class EmailDataset(Dataset):
         return item
 
 
-def train_albert(
+def train_transformer_classifier(
     *,
     train_df: pd.DataFrame,
     eval_df: pd.DataFrame,
@@ -59,7 +59,7 @@ def train_albert(
     num_labels: int,
     checkpoint_dir: Path | None = None,
 ) -> TrainResult:
-    """Fine-tune one ALBERT classifier and save it."""
+    """Fine-tune one Hugging Face sequence classifier and save it."""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = load_tokenizer(model_name)
@@ -224,7 +224,7 @@ def load_tokenizer(model_name_or_dir: str | Path):
 
 
 def load_classifier(model_name: str, num_labels: int):
-    """Load ALBERT locally and create the task-specific classifier head."""
+    """Load a local Hugging Face classifier and create the task head."""
 
     try:
         return AutoModelForSequenceClassification.from_pretrained(

@@ -11,13 +11,14 @@ from transformers import AutoTokenizer
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
 from mail_cag.llm_rewriter import choose_ollama_model, rewrite_email
+from mail_cag.rewrite_quality import write_rewrite_quality_report
 from mail_cag.run_storage import (
     choose_run_root,
     load_existing_rewrites,
     round_complete,
     write_latest_pointer,
 )
-from mail_cag.training import add_true_label_confidence, train_albert
+from mail_cag.training import add_true_label_confidence, train_transformer_classifier
 
 
 def run_config(
@@ -149,7 +150,7 @@ def train_one_round(
 ):
     training = config["training"]
     model = config["model"]
-    return train_albert(
+    return train_transformer_classifier(
         train_df=train_df,
         eval_df=eval_df,
         model_name=start_model or model["base_model"],
@@ -205,7 +206,7 @@ def generate_round_rewrites(
             base_url=llm.get("base_url", "http://127.0.0.1:11434"),
             model=ollama_model,
             label=int(row["label"]),
-            text=visible_model_text(
+            text=visible_defender_text(
                 text=str(row["text"]),
                 tokenizer=tokenizer,
                 max_length=int(config["model"]["max_length"]),
@@ -216,6 +217,8 @@ def generate_round_rewrites(
         )
         for rewrite in rewrites:
             item = row.to_dict()
+            item["source_text"] = item["text"]
+            item["source_true_label_confidence"] = item["true_label_confidence"]
             item["text"] = rewrite
             item["subject"] = ""
             item["body"] = rewrite
@@ -225,7 +228,16 @@ def generate_round_rewrites(
         progress.set_postfix(saved=len(rows))
 
     print(f"round rewrites: {len(rows)}")
-    return pd.DataFrame(rows)
+    rewrites_df = pd.DataFrame(rows)
+    write_rewrite_quality_report(
+        rewrites_df=rewrites_df,
+        model_dir=model_dir,
+        round_dir=round_dir,
+        max_length=int(config["model"]["max_length"]),
+        batch_size=int(config["training"]["eval_batch_size"]),
+    )
+    print(f"rewrite quality: {round_dir / 'rewrite_quality_summary.json'}")
+    return rewrites_df
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:
@@ -237,8 +249,8 @@ def write_csv_if_missing(df: pd.DataFrame, path: Path) -> None:
         df.to_csv(path, index=False)
 
 
-def visible_model_text(text: str, tokenizer, max_length: int) -> str:
-    """Return the same text window ALBERT can see."""
+def visible_defender_text(text: str, tokenizer, max_length: int) -> str:
+    """Return the same text window the current defender can see."""
 
     token_ids = tokenizer.encode(
         text,

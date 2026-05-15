@@ -6,9 +6,9 @@ Mail-CAG is a cyclic adversarial training project for phishing-email detection.
 
 We compare three models:
 
-- **Model A**: clean ALBERT baseline.
-- **Model B**: ALBERT + cyclic LLM rewrites for phishing emails only.
-- **Model C**: ALBERT + cyclic LLM rewrites for phishing and benign emails.
+- **Model A**: clean defender baseline. Right now the defender is ALBERT.
+- **Model B**: defender + cyclic LLM rewrites for phishing emails only.
+- **Model C**: defender + cyclic LLM rewrites for phishing and benign emails.
 
 For Model B/C, each round starts from the previous round's saved model:
 
@@ -83,6 +83,8 @@ runs/model_b_llm_phishing_only/b_smoke_001/
     checkpoint_current/
     rewrite_source.csv
     generated_rewrites.csv
+    rewrite_quality.csv
+    rewrite_quality_summary.json
   round_2/
   round_3/
 ```
@@ -95,6 +97,8 @@ runs/model_b_llm_phishing_only/b_smoke_001/
 - Dataset: prepared English CEAS at `sample_frac_per_label: 0.06`.
 - Prepared file: `data/processed/CEAS_08_en_1600.csv`.
 - Defender: `albert-base-v2` with `max_length: 512`.
+- To swap defenders later, change `model.base_model` and `model.max_length`,
+  then regenerate the prepared dataset with that tokenizer.
 - Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.
 - Between-round rewrite budget: 200 selected emails, 1 candidate each.

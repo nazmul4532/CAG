@@ -67,7 +67,10 @@ def build_stats(
 ) -> dict:
     return {
         "file": str(path),
-        "description": "Prepared CEAS dataset: English-only, no obvious non-English scripts, <=1600 ALBERT tokens.",
+        "description": (
+            "Prepared CEAS dataset: English-only, no obvious non-English "
+            "scripts, within the configured tokenizer length cap."
+        ),
         "preparation": {
             "source": "CEAS_08.csv",
             "language": "en",

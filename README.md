@@ -2,6 +2,10 @@
 
 Mail-CAG is a cyclic adversarial game for robust phishing-email detection.
 
+The current project currently uses ALBERT as the defender, but the pipeline is
+written around a generic text classifier so we can swap in another defender
+later.
+
 The current project asks:
 
 1. Does LLM-generated cyclic adversarial training improve ALBERT robustness
@@ -40,10 +44,22 @@ sample_frac_per_label: 0.06
 ```
 
 Move this toward `1.0` only after the pipeline is behaving. The configs use a
-prepared CEAS file containing English emails up to 1600 ALBERT tokens. The
-preparation step also drops rows with obvious non-English writing systems such
-as CJK, Cyrillic, Arabic, Hebrew, Devanagari, Thai, Japanese, and Hangul.
-ALBERT then trains/evaluates with `max_length: 512`.
+prepared CEAS file containing English emails up to 1600 tokens under the current
+defender tokenizer. The preparation step also drops rows with obvious
+non-English writing systems such as CJK, Cyrillic, Arabic, Hebrew, Devanagari,
+Thai, Japanese, and Hangul.
+
+The defender then trains/evaluates with:
+
+```yaml
+model:
+  base_model: albert-base-v2
+  max_length: 512
+```
+
+If we later replace ALBERT with another classifier, change `base_model` and
+`max_length`, then regenerate the prepared dataset with that classifier's
+tokenizer.
 
 ## Repository Layout
 
@@ -178,6 +194,8 @@ round_N/model/               final model for the round
 round_N/checkpoint_current/  latest epoch checkpoint, overwritten each epoch
 round_N/training_data.csv    data used for that round
 round_N/generated_rewrites.csv
+round_N/rewrite_quality.csv
+round_N/rewrite_quality_summary.json
 ```
 
 During LLM rewriting, progress should print as:
@@ -195,9 +213,16 @@ settings can still request up to:
 200 selected emails x 1 candidate = 200 rewrites per between-round step
 ```
 
-Qwen only receives the same 512-token text window that ALBERT can see. This
-keeps rewriting aligned with the defender and avoids wasting generation on long
-email tails that ALBERT truncates away.
+Qwen only receives the same text window that the current defender can see. With
+today's ALBERT config, that is 512 tokens. This keeps rewriting aligned with the
+classifier and avoids wasting generation on long email tails that the defender
+truncates away.
+
+After a rewrite batch finishes, the runner writes a small quality report beside
+the generated rewrites. It checks whether rewrites changed, preserved URL
+behavior, avoided non-English scripts/structured output, and how much the
+round's defender confidence dropped on the rewritten email. This is diagnostic
+only; it does not silently skip or filter rewrites.
 
 If this is too slow, reduce these in the Model B/C config:
 
