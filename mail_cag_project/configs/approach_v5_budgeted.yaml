@@ -1,0 +1,45 @@
+name: approach_v5_budgeted
+description: Budgeted cyclic game with fresh clean samples plus current-round adversarial samples.
+
+data:
+  raw_path: ../../CEAS_08.csv
+  sample_frac_per_label: 0.06
+  validation_seed_path: ../../validation_set_0.csv
+  random_seed: 42
+
+model:
+  base_model: albert-base-v2
+  max_length: 256
+  num_labels: 2
+
+training:
+  rounds: 6
+  learning_rate: 5.0e-5
+  num_train_epochs: 3
+  train_batch_size: 16
+  eval_batch_size: 16
+  strategy: budgeted_roundwise
+  orig_samples_per_round: null
+
+attacks:
+  training_attackers:
+    - textfooler
+    - pwws
+    - deepwordbug
+  adv_samples_per_round: null
+  timeout_seconds_per_sample: 60
+  checkpoint_per_recipe: true
+
+evaluation:
+  clean_test: true
+  seen_attackers:
+    - textfooler
+    - pwws
+    - deepwordbug
+  held_out_attackers: []
+
+paths:
+  legacy_output_dir: ../../albert_adversarial_game_model_v5
+  legacy_debug_output_dir: ../../albert_adversarial_game_model_v5dummy
+  legacy_debug_validation_dir: ../../albert_adversarial_val_sets_v5dummy
+  run_root: runs/approach_v5_budgeted

@@ -1,0 +1,35 @@
+name: baseline_clean_albert
+description: ALBERT trained on the clean CEAS split only; reference point for robustness claims.
+
+data:
+  raw_path: ../../CEAS_08.csv
+  sample_frac_per_label: 0.06
+  validation_seed_path: ../../validation_set_0.csv
+  random_seed: 42
+
+model:
+  base_model: albert-base-v2
+  max_length: 256
+  num_labels: 2
+
+training:
+  rounds: 1
+  learning_rate: 5.0e-5
+  num_train_epochs: 3
+  train_batch_size: 16
+  eval_batch_size: 16
+  strategy: clean_only
+
+attacks:
+  training_attackers: []
+
+evaluation:
+  clean_test: true
+  seen_attackers: []
+  held_out_attackers:
+    - textfooler
+    - pwws
+    - deepwordbug
+
+paths:
+  run_root: runs/baseline_clean_albert
