@@ -26,16 +26,20 @@ def describe_config(config_path: str | Path) -> None:
     sample_frac = float(config["data"]["sample_frac_per_label"])
     seed = int(config["data"].get("random_seed", 42))
     max_token_length = config["data"].get("max_token_length")
+    language = config["data"].get("language")
     df = load_ceas_subset(
         raw_path,
         sample_frac,
         seed,
         tokenizer_name=config["model"]["base_model"],
         max_token_length=max_token_length,
+        language=language,
     )
 
     print(f"experiment: {config['name']}")
     print(f"raw data: {raw_path}")
+    if language:
+        print(f"language filter: {language}")
     if max_token_length:
         print(f"max token length filter: {max_token_length}")
     print(f"sample frac per label: {sample_frac}")

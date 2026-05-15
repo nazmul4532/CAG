@@ -92,8 +92,8 @@ runs/model_b_llm_phishing_only/b_smoke_001/
 
 ## Current Defaults
 
-- Dataset: CEAS at `sample_frac_per_label: 0.06`, after filtering emails longer
-  than 1600 ALBERT tokens.
+- Dataset: English CEAS at `sample_frac_per_label: 0.06`, after filtering emails
+  longer than 1600 ALBERT tokens.
 - Defender: `albert-base-v2` with `max_length: 512`.
 - Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.

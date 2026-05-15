@@ -12,6 +12,7 @@ datasets
 accelerate
 evaluate
 huggingface-hub
+langdetect
 sentence-transformers
 textattack
 PyYAML

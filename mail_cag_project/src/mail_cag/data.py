@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from langdetect import DetectorFactory, LangDetectException, detect
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
+
+DetectorFactory.seed = 42
 
 
 def load_ceas_subset(
@@ -13,6 +16,7 @@ def load_ceas_subset(
     random_seed: int = 42,
     tokenizer_name: str | None = None,
     max_token_length: int | None = None,
+    language: str | None = None,
 ) -> pd.DataFrame:
     """Load the same percentage from each CEAS label.
 
@@ -23,8 +27,14 @@ def load_ceas_subset(
 
     df = pd.read_csv(raw_path)
     df = add_email_text(df)
-    if tokenizer_name and max_token_length:
-        df = filter_by_token_length(df, tokenizer_name, max_token_length)
+    if language or max_token_length:
+        df = load_or_build_filtered_ceas(
+            df=df,
+            raw_path=Path(raw_path),
+            tokenizer_name=tokenizer_name,
+            max_token_length=max_token_length,
+            language=language,
+        )
 
     parts = []
     for label in sorted(df["label"].dropna().unique()):
@@ -34,6 +44,56 @@ def load_ceas_subset(
         )
         parts.append(part)
     return pd.concat(parts).sample(frac=1, random_state=random_seed).reset_index(drop=True)
+
+
+def load_or_build_filtered_ceas(
+    *,
+    df: pd.DataFrame,
+    raw_path: Path,
+    tokenizer_name: str | None,
+    max_token_length: int | None,
+    language: str | None,
+) -> pd.DataFrame:
+    """Cache slow CEAS filters outside Git-tracked files."""
+
+    cache_path = filtered_cache_path(raw_path, language, max_token_length)
+    if cache_path.exists():
+        return pd.read_csv(cache_path)
+
+    filtered = df
+    if language:
+        filtered = filter_by_language(filtered, language)
+    if tokenizer_name and max_token_length:
+        filtered = filter_by_token_length(filtered, tokenizer_name, max_token_length)
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    filtered.to_csv(cache_path, index=False)
+    return filtered
+
+
+def filtered_cache_path(
+    raw_path: Path,
+    language: str | None,
+    max_token_length: int | None,
+) -> Path:
+    stem = raw_path.stem
+    language_name = language or "any"
+    token_name = str(max_token_length) if max_token_length else "any"
+    return raw_path.parent.parent / "processed" / f"{stem}_{language_name}_{token_name}.csv"
+
+
+def filter_by_language(df: pd.DataFrame, language: str) -> pd.DataFrame:
+    """Keep emails detected as the requested language."""
+
+    keep = [detect_language(text) == language for text in df["text"].astype(str)]
+    return df[keep].reset_index(drop=True)
+
+
+def detect_language(text: str) -> str | None:
+    try:
+        return detect(text)
+    except LangDetectException:
+        return None
 
 
 def filter_by_token_length(

@@ -39,6 +39,7 @@ def run_config(
         int(config["data"].get("random_seed", 42)),
         tokenizer_name=config["model"]["base_model"],
         max_token_length=config["data"].get("max_token_length"),
+        language=config["data"].get("language"),
     )
     df = add_email_text(df)
     train_df, eval_df = split_train_eval(df, int(config["data"].get("random_seed", 42)))
