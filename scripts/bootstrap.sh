@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ENV_NAME="${ENV_NAME:-mail-cag}"
-PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+ENV_NAME="${ENV_NAME:-nlp_game}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 

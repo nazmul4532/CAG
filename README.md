@@ -7,12 +7,14 @@ rounds.
 
 ## Repository Layout
 
-- `NLP_Adverserial_Game_v*.ipynb`: experiment notebooks.
+- `NLP_Adverserial_Game_v10.ipynb`: latest full cyclic adversarial game notebook.
+- `NLP_Adverserial_Game_v10_dummy.ipynb`: latest small/debug cyclic run notebook.
 - `modified_attacker.py`: patched TextAttack attacker used by the notebooks.
 - `validation_set_0.csv`: small validation seed tracked in Git.
 - `scripts/bootstrap.sh`: creates the Python environment and installs packages.
 - `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
-- `reports/notebook_exports/`: exported notebook HTML reports.
+- `reports/notebook_exports/`: latest exported notebook HTML reports.
+- `archive/past_attempts/`: older notebooks, older HTML exports, and old root links.
 - `data/raw/`: local raw datasets, ignored by Git.
 - `outputs/experiments/`: local experiment runs, checkpoints, and generated outputs,
   ignored by Git.
@@ -21,9 +23,10 @@ rounds.
 Large raw datasets, local caches, trained checkpoints, and generated experiment
 folders are intentionally ignored by Git.
 
-The root-level `CEAS_08.csv` and `albert_adversarial_*` paths are compatibility
-symlinks into `data/raw/` and `outputs/experiments/`. They keep the existing
-notebooks runnable without rewriting old cells.
+The root-level `CEAS_08.csv`, `albert_adversarial_game_model_v5`,
+`albert_adversarial_game_model_v5dummy`, and `albert_adversarial_val_sets_v5dummy`
+paths are compatibility symlinks into `data/raw/` and `outputs/experiments/`.
+They keep the current notebooks runnable without rewriting old cells.
 
 ## Bootstrap
 
@@ -33,17 +36,18 @@ From the repository root:
 scripts/bootstrap.sh
 ```
 
-By default this creates a conda environment named `mail-cag` with Python 3.10.
+By default this creates or updates the original conda environment named
+`nlp_game` with Python 3.12.
 Override the defaults when needed:
 
 ```bash
-ENV_NAME=mail-cag-dev PYTHON_VERSION=3.11 scripts/bootstrap.sh
+ENV_NAME=mail-cag-dev PYTHON_VERSION=3.12 scripts/bootstrap.sh
 ```
 
 Activate the environment:
 
 ```bash
-conda activate mail-cag
+conda activate nlp_game
 ```
 
 ## Download Models
