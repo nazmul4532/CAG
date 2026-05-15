@@ -11,10 +11,13 @@ rounds.
 - `mail_cag.py`: friendly command-line entrypoint.
 - `mail_cag_project/`: clean script-first workspace for the next version of the
   paper experiments. The main config is
-  `mail_cag_project/configs/cyclic_budgeted.yaml`.
+  `mail_cag_project/configs/cyclic_llm_both_labels.yaml`.
 - `legacy_workspace/`: original notebook-era files and local legacy artifacts.
 - `validation_set_0.csv`: small validation seed tracked in Git.
-- `docs/approaches.md`: notes on the active v4 and v5 experiment designs.
+- `docs/approaches.md`: notes on the current Model A/B/C experiment design and
+  older v4/v5 references.
+- `mail_cag_project/docs/literature_scan.md`: quick notes on nearby LLM
+  phishing/adversarial-training work.
 - `scripts/bootstrap.sh`: creates the Python environment and installs packages.
 - `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
 
@@ -34,10 +37,12 @@ conda activate nlp_game
 python mail_cag.py describe
 ```
 
-That describes the main v5/budgeted cyclic setup. Compare against:
+That describes the main Model C / both-label LLM cyclic setup. Compare against:
 
 ```bash
 python mail_cag.py describe baseline
+python mail_cag.py describe model-b
+python mail_cag.py describe model-c
 ```
 
 From the repository root:

@@ -1,9 +1,22 @@
 # Experiment Approaches
 
-This project is moving forward with the v5 budgeted cyclic adversarial-game
-variant.
+This project is moving forward with LLM-based budgeted cyclic adversarial
+training.
 
-## Legacy Approach v4: Cumulative Adversarial Game
+## Main Comparison
+
+- **Model A**: clean ALBERT baseline.
+- **Model B**: cyclic ALBERT with LLM rewrites for phishing emails only.
+- **Model C**: cyclic ALBERT with LLM rewrites for both phishing and benign
+  emails.
+
+This comparison asks:
+
+1. Does LLM-generated cyclic training improve robustness over clean ALBERT?
+2. Does phishing-only rewriting help differently than balanced both-label
+   rewriting?
+
+## Historical Approach v4: Cumulative Adversarial Game
 
 Notebook: `legacy_workspace/notebook_era/approach_v4_cumulative_game.ipynb`
 
@@ -23,9 +36,9 @@ Idea:
 Keep this as historical/reference material. It is not the main implementation
 path now.
 
-## Main Approach v5: Budgeted Roundwise Game
+## Historical Approach v5: Budgeted Roundwise Game
 
-Notebook: `legacy_workspace/notebook_era/approach_v5_budgeted_roundwise_game.ipynb`
+Legacy notebook: `legacy_workspace/notebook_era/approach_v5_budgeted_roundwise_game.ipynb`
 
 Debug notebook: `legacy_workspace/notebook_era/approach_v5_dummy_debug.ipynb`
 
@@ -37,12 +50,13 @@ Local outputs:
 
 Idea:
 
-- Separate the attack budget from the clean-data budget with
-  `adv_samples_per_round` and `orig_samples_per_round`.
-- Generate adversarial samples for the current round.
+- Separate the LLM rewrite budget from the clean-data budget.
+- Generate label-preserving rewrites for the current round.
 - Train on a fresh clean subset plus that round's adversarial samples instead of
   blindly accumulating every previous augmented dataset.
-- Checkpoint TextAttack progress per recipe so interrupted attacks can resume.
+- Evaluate later with TextFooler, PWWS, and DeepWordBug as classic held-out
+  adversarial attacks.
 
-Use this as the main project direction. It gives us a cleaner controlled game
-with explicit budgets and less uncontrolled dataset growth.
+Use this as the historical base for the new Model B / Model C plan. The useful
+part is budget control; the main change is that TextAttack recipes move to
+held-out evaluation instead of training-data generation.

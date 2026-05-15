@@ -20,17 +20,22 @@ reruns, checkpoints, and analysis. This workspace separates those concerns:
 
 Use these first:
 
-- `configs/cyclic_budgeted.yaml`: main v5 path.
-- `configs/baseline_clean.yaml`: clean ALBERT reference.
+- `configs/baseline_clean.yaml`: Model A, clean ALBERT reference.
+- `configs/cyclic_llm_phishing_only.yaml`: Model B, LLM rewrites phishing only.
+- `configs/cyclic_llm_both_labels.yaml`: Model C, LLM rewrites both labels.
+- `configs/providers.example.yaml`: provider slots for Ollama now and
+  OpenAI/Gemini later.
+- `docs/literature_scan.md`: quick map of nearby papers and the narrow gap we
+  are targeting.
 
-The old v4 config is kept under `configs/legacy/` for reference only.
+The old TextAttack-training and v4 configs are kept under `configs/legacy/` for
+reference only.
 
 ## Current Legacy Inputs
 
 The workspace references existing local files through `legacy_workspace/`:
 
 - raw data: `../legacy_workspace/artifacts/data/raw/CEAS_08.csv`
-- v4 outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4`
 - v5 outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5`
 - v5 debug outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy`
 
@@ -62,6 +67,10 @@ python mail_cag_project/scripts/describe_setup.py
 Clean baseline means: train ALBERT on the same clean CEAS train split, with no
 adversarial examples added. It is not a different dataset. It is the reference
 model we compare the cyclic methods against.
+
+Phishing-only LLM training means only label `1` examples are rewritten by the
+LLM. Both-label LLM training means labels `0` and `1` are both rewritten, so the
+classifier cannot simply learn that "LLM-looking text means phishing."
 
 Held-out attacker evaluation means: evaluate a trained model using attacks that
 were not used to generate its training data. You were partly doing this when you

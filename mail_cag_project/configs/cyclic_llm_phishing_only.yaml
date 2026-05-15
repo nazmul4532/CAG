@@ -1,0 +1,57 @@
+name: model_b_llm_phishing_only
+description: Model B - cyclic ALBERT trained with LLM rewrites for phishing-labeled emails only.
+
+research_question: >
+  Does LLM-generated cyclic adversarial training improve ALBERT robustness when
+  the LLM only rewrites phishing-labeled examples?
+
+data:
+  raw_path: ../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
+  sample_frac_per_label: 0.06
+  validation_seed_path: ../../validation_set_0.csv
+  random_seed: 42
+
+model:
+  base_model: albert-base-v2
+  max_length: 256
+  num_labels: 2
+
+training:
+  rounds: 3
+  learning_rate: 5.0e-5
+  num_train_epochs: 3
+  train_batch_size: 16
+  eval_batch_size: 16
+  strategy: cyclic_llm_budgeted
+  orig_samples_per_round: null
+
+attacks:
+  training_attackers:
+    - llm_rewrite
+  rewrite_scope: phishing_only
+  target_labels:
+    - 1
+  candidates_per_email: 3
+  max_examples_per_round: 200
+  selection_rule: lowest_true_label_confidence
+
+llm:
+  provider: ollama
+  model: qwen3:14b
+  fallback_models:
+    - qwen3:8b
+    - qwen3:4b
+  temperature: 0.6
+  top_p: 0.9
+  keep_alive: "0"
+
+evaluation:
+  clean_test: true
+  textattack_attackers:
+    - textfooler
+    - pwws
+    - deepwordbug
+  llm_held_out: true
+
+paths:
+  run_root: runs/model_b_llm_phishing_only

@@ -1,0 +1,17 @@
+ollama:
+  enabled: true
+  base_url: http://127.0.0.1:11434
+  preferred_models:
+    - qwen3:14b
+    - qwen3:8b
+    - qwen3:4b
+
+openai:
+  enabled: false
+  api_key_env: OPENAI_API_KEY
+  model: set-after-checking-current-openai-docs
+
+gemini:
+  enabled: false
+  api_key_env: GEMINI_API_KEY
+  model: set-after-checking-current-gemini-docs

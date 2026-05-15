@@ -10,8 +10,28 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "mail_cag_project" / "src"
 DEFAULT_CONFIGS = {
     "baseline": PROJECT_ROOT / "mail_cag_project" / "configs" / "baseline_clean.yaml",
-    "cyclic": PROJECT_ROOT / "mail_cag_project" / "configs" / "cyclic_budgeted.yaml",
-    "v5": PROJECT_ROOT / "mail_cag_project" / "configs" / "cyclic_budgeted.yaml",
+    "model-a": PROJECT_ROOT / "mail_cag_project" / "configs" / "baseline_clean.yaml",
+    "model-b": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_phishing_only.yaml",
+    "phishing-only": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_phishing_only.yaml",
+    "model-c": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_both_labels.yaml",
+    "both-labels": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_both_labels.yaml",
+    "cyclic": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_both_labels.yaml",
+    "v5": PROJECT_ROOT / "mail_cag_project" / "configs" / "cyclic_llm_both_labels.yaml",
     "v4-legacy": PROJECT_ROOT
     / "mail_cag_project"
     / "configs"
@@ -54,7 +74,11 @@ def main() -> None:
         "config",
         nargs="?",
         default="cyclic",
-        help="One of baseline, cyclic, v5, v4-legacy, or a config path. Default: cyclic.",
+        help=(
+            "One of baseline/model-a, model-b/phishing-only, "
+            "model-c/both-labels, cyclic, v5, v4-legacy, or a config path. "
+            "Default: cyclic."
+        ),
     )
 
     subparsers.add_parser(

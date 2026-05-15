@@ -20,14 +20,15 @@ conda activate nlp_game
 python mail_cag.py describe
 ```
 
-That command does not train anything. It checks the default v5 setup and tells
-you which data/results already exist.
+That command does not train anything. It checks the default Model C setup and
+tells you which data/results already exist.
 
 Other useful checks:
 
 ```bash
 python mail_cag.py describe baseline
-python mail_cag.py describe cyclic
+python mail_cag.py describe model-b
+python mail_cag.py describe model-c
 ```
 
 ## Mental Model
@@ -36,7 +37,7 @@ Use this map:
 
 ```text
 mail_cag.py                 friendly command to run things
-mail_cag_project/configs/   experiment settings; use cyclic_budgeted.yaml first
+mail_cag_project/configs/   experiment settings; use cyclic_llm_both_labels.yaml first
 mail_cag_project/src/       reusable Python code
 mail_cag_project/scripts/   lower-level scripts
 legacy_workspace/           old notebooks, old results, local big files
@@ -44,11 +45,24 @@ legacy_workspace/           old notebooks, old results, local big files
 
 ## The Path Forward
 
-We are moving forward with **v5 / budgeted cyclic training**.
+We are moving forward with **LLM-based budgeted cyclic training**.
 
-It trains each round using fresh clean samples plus the current round's
-adversarial samples. This is cleaner for controlled experiments than the v4
-cumulative approach.
+There are three main models:
+
+- **Model A**: clean ALBERT baseline.
+- **Model B**: cyclic ALBERT with LLM rewrites for phishing emails only.
+- **Model C**: cyclic ALBERT with LLM rewrites for both phishing and benign emails.
+
+The main comparison is:
+
+```text
+Model A vs Model B vs Model C
+```
+
+This answers two questions:
+
+1. Does LLM-generated cyclic adversarial training help compared with clean ALBERT?
+2. Does rewriting only phishing emails behave differently from rewriting both labels?
 
 The old v4 config still exists at:
 
