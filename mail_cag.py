@@ -72,7 +72,7 @@ def run(
 ) -> None:
     ensure_import_path()
 
-    from mail_cag.run import run_config
+    from mail_cag.experiment_runner import run_config
 
     run_config(
         resolve_config(config_name),
