@@ -175,8 +175,9 @@ def generate_round_rewrites(
     selected = scored.sort_values("true_label_confidence").head(max_examples)
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
+    output_path = round_dir / "generated_rewrites.csv"
     rows = []
-    for _, row in selected.iterrows():
+    for index, (_, row) in enumerate(selected.iterrows(), start=1):
         rewrites = rewrite_email(
             base_url=llm.get("base_url", "http://127.0.0.1:11434"),
             model=ollama_model,
@@ -193,11 +194,11 @@ def generate_round_rewrites(
             item["body"] = rewrite
             item["generated_by"] = ollama_model
             rows.append(item)
+        pd.DataFrame(rows).to_csv(output_path, index=False)
+        print(f"rewritten emails: {index}/{len(selected)}", flush=True)
 
-    rewrites_df = pd.DataFrame(rows)
-    rewrites_df.to_csv(round_dir / "generated_rewrites.csv", index=False)
-    print(f"round rewrites: {len(rewrites_df)}")
-    return rewrites_df
+    print(f"round rewrites: {len(rows)}")
+    return pd.DataFrame(rows)
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:
