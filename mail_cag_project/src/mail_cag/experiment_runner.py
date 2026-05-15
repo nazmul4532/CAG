@@ -188,7 +188,9 @@ def generate_round_rewrites(
 
     output_path = round_dir / "generated_rewrites.csv"
     rows = []
+    print(f"selected emails to rewrite: {len(selected)}", flush=True)
     for index, (_, row) in enumerate(selected.iterrows(), start=1):
+        print(f"rewriting email: {index}/{len(selected)}", flush=True)
         rewrites = rewrite_email(
             base_url=llm.get("base_url", "http://127.0.0.1:11434"),
             model=ollama_model,
@@ -206,7 +208,7 @@ def generate_round_rewrites(
             item["generated_by"] = ollama_model
             rows.append(item)
         pd.DataFrame(rows).to_csv(output_path, index=False)
-        print(f"rewritten emails: {index}/{len(selected)}", flush=True)
+        print(f"finished email: {index}/{len(selected)}", flush=True)
 
     print(f"round rewrites: {len(rows)}")
     return pd.DataFrame(rows)
