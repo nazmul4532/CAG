@@ -34,6 +34,7 @@ attacks:
     - 1
   candidates_per_email: 1
   max_examples_per_round: 200
+  save_every_rewrites: 50
   selection_rule: lowest_true_label_confidence
 
 llm:

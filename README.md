@@ -211,6 +211,14 @@ settings can still request up to:
 200 selected emails x 1 candidate = 200 rewrites per between-round step
 ```
 
+Generated rewrites are saved every 50 rows and once again at the end of the
+batch:
+
+```yaml
+attacks:
+  save_every_rewrites: 50
+```
+
 Qwen only receives the same text window that the current defender can see. With
 today's ALBERT config, that is 512 tokens. This keeps rewriting aligned with the
 classifier and avoids wasting generation on long email tails that the defender

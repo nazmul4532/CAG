@@ -195,6 +195,7 @@ def generate_round_rewrites(
 
     output_path = round_dir / "generated_rewrites.csv"
     rows = []
+    save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
     print(f"selected emails to rewrite: {len(selected)}", flush=True)
     progress = tqdm(
         selected.iterrows(),
@@ -224,9 +225,11 @@ def generate_round_rewrites(
             item["body"] = rewrite
             item["generated_by"] = ollama_model
             rows.append(item)
-        pd.DataFrame(rows).to_csv(output_path, index=False)
+        if len(rows) % save_every == 0:
+            pd.DataFrame(rows).to_csv(output_path, index=False)
         progress.set_postfix(saved=len(rows))
 
+    pd.DataFrame(rows).to_csv(output_path, index=False)
     print(f"round rewrites: {len(rows)}")
     rewrites_df = pd.DataFrame(rows)
     write_rewrite_quality_report(
