@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 from langdetect import DetectorFactory, LangDetectException, detect
 import pandas as pd
@@ -8,6 +9,19 @@ from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer
 
 DetectorFactory.seed = 42
+NON_ENGLISH_SCRIPT_PATTERN = re.compile(
+    "["
+    "\u0370-\u03ff"  # Greek
+    "\u0400-\u04ff"  # Cyrillic
+    "\u0590-\u05ff"  # Hebrew
+    "\u0600-\u06ff"  # Arabic
+    "\u0900-\u097f"  # Devanagari
+    "\u0e00-\u0e7f"  # Thai
+    "\u3040-\u30ff"  # Japanese Hiragana/Katakana
+    "\u3400-\u9fff"  # CJK
+    "\uac00-\ud7af"  # Hangul
+    "]"
+)
 
 
 def load_ceas_subset(
@@ -39,6 +53,16 @@ def filter_by_language(df: pd.DataFrame, language: str) -> pd.DataFrame:
     """Keep emails detected as the requested language."""
 
     keep = [detect_language(text) == language for text in df["text"].astype(str)]
+    return df[keep].reset_index(drop=True)
+
+
+def filter_non_english_scripts(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop rows containing obvious non-English writing systems."""
+
+    keep = [
+        not bool(NON_ENGLISH_SCRIPT_PATTERN.search(text))
+        for text in df["text"].fillna("").astype(str)
+    ]
     return df[keep].reset_index(drop=True)
 
 

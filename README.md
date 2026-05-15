@@ -40,8 +40,10 @@ sample_frac_per_label: 0.06
 ```
 
 Move this toward `1.0` only after the pipeline is behaving. The configs use a
-prepared CEAS file containing English emails up to 1600 ALBERT tokens. ALBERT
-then trains/evaluates with `max_length: 512`.
+prepared CEAS file containing English emails up to 1600 ALBERT tokens. The
+preparation step also drops rows with obvious non-English writing systems such
+as CJK, Cyrillic, Arabic, Hebrew, Devanagari, Thai, Japanese, and Hangul.
+ALBERT then trains/evaluates with `max_length: 512`.
 
 ## Repository Layout
 

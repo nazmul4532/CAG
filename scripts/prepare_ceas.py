@@ -12,7 +12,13 @@ sys.path.insert(0, str(SRC_DIR))
 
 import pandas as pd
 
-from mail_cag.data import add_email_text, describe_labels, filter_by_language, filter_by_token_length
+from mail_cag.data import (
+    add_email_text,
+    describe_labels,
+    filter_by_language,
+    filter_by_token_length,
+    filter_non_english_scripts,
+)
 
 
 def main() -> None:
@@ -28,6 +34,11 @@ def main() -> None:
         help="Prepared output CSV path, relative to the repo root.",
     )
     parser.add_argument("--language", default="en")
+    parser.add_argument(
+        "--keep-non-english-scripts",
+        action="store_true",
+        help="Keep rows with CJK/Cyrillic/Arabic/etc. characters.",
+    )
     parser.add_argument("--tokenizer", default="albert-base-v2")
     parser.add_argument("--max-token-length", type=int, default=1600)
     args = parser.parse_args()
@@ -43,6 +54,11 @@ def main() -> None:
     df = filter_by_language(df, args.language)
     print(f"after language={args.language}: {len(df)}")
     print(f"labels: {describe_labels(df)}")
+
+    if not args.keep_non_english_scripts:
+        df = filter_non_english_scripts(df)
+        print("after non-English script filter:", len(df))
+        print(f"labels: {describe_labels(df)}")
 
     df = filter_by_token_length(df, args.tokenizer, args.max_token_length)
     print(f"after max_token_length={args.max_token_length}: {len(df)}")
