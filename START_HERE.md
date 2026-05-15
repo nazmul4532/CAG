@@ -54,6 +54,9 @@ python mail_cag.py run model-c
 ```
 
 Outputs go under `runs/`, which is intentionally ignored by Git.
+Each round keeps its final model in `round_N/model/`. The current round also
+keeps one rolling epoch checkpoint in `round_N/checkpoint_current/`; that folder
+is overwritten after every epoch.
 
 ## Mental Model
 

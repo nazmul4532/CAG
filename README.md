@@ -67,6 +67,10 @@ python mail_cag.py run model-b
 python mail_cag.py run model-c
 ```
 
+Each completed round keeps its final model under `runs/<experiment>/round_N/model/`.
+During a round, the latest finished epoch is overwritten at
+`runs/<experiment>/round_N/checkpoint_current/`.
+
 From the repository root:
 
 ```bash

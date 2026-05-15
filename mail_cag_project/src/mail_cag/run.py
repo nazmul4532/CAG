@@ -113,6 +113,7 @@ def train_one_round(
         train_batch_size=int(training["train_batch_size"]),
         eval_batch_size=int(training["eval_batch_size"]),
         num_labels=int(model["num_labels"]),
+        checkpoint_dir=round_dir / "checkpoint_current",
     )
 
 

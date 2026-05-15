@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import shutil
 
 import pandas as pd
 import torch
@@ -50,6 +51,7 @@ def train_albert(
     train_batch_size: int,
     eval_batch_size: int,
     num_labels: int,
+    checkpoint_dir: Path | None = None,
 ) -> TrainResult:
     """Fine-tune one ALBERT classifier and save it."""
 
@@ -83,12 +85,25 @@ def train_albert(
             running_loss += float(loss.item())
         average_loss = running_loss / max(len(train_loader), 1)
         print(f"epoch {epoch}/{epochs} loss: {average_loss:.4f}", flush=True)
+        if checkpoint_dir is not None:
+            save_current_checkpoint(model, tokenizer, checkpoint_dir, epoch)
 
     accuracy = evaluate_accuracy(model, eval_loader, device)
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
     return TrainResult(model_dir=output_dir, eval_accuracy=accuracy)
+
+
+def save_current_checkpoint(model, tokenizer, checkpoint_dir: Path, epoch: int) -> None:
+    """Overwrite the current-round checkpoint after each finished epoch."""
+
+    if checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True)
+    model.save_pretrained(checkpoint_dir)
+    tokenizer.save_pretrained(checkpoint_dir)
+    (checkpoint_dir / "epoch.txt").write_text(f"{epoch}\n", encoding="utf-8")
 
 
 def evaluate_accuracy(model, loader: DataLoader, device: torch.device) -> float:
