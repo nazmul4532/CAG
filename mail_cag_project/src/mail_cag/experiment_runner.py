@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 from tqdm.auto import tqdm
+from transformers import AutoTokenizer
 
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
@@ -176,6 +177,10 @@ def generate_round_rewrites(
     target_labels = {int(label) for label in attacks["target_labels"]}
     max_examples = int(attacks["max_examples_per_round"])
     candidates = int(attacks["candidates_per_email"])
+    tokenizer = AutoTokenizer.from_pretrained(
+        config["model"]["base_model"],
+        local_files_only=True,
+    )
 
     candidates_df = source_df[source_df["label"].isin(target_labels)].copy()
     scored = add_true_label_confidence(
@@ -200,7 +205,11 @@ def generate_round_rewrites(
             base_url=llm.get("base_url", "http://127.0.0.1:11434"),
             model=ollama_model,
             label=int(row["label"]),
-            text=str(row["text"]),
+            text=visible_model_text(
+                text=str(row["text"]),
+                tokenizer=tokenizer,
+                max_length=int(config["model"]["max_length"]),
+            ),
             candidates=candidates,
             temperature=float(llm.get("temperature", 0.6)),
             top_p=float(llm.get("top_p", 0.9)),
@@ -226,3 +235,15 @@ def save_json(path: Path, data: dict[str, Any]) -> None:
 def write_csv_if_missing(df: pd.DataFrame, path: Path) -> None:
     if not path.exists():
         df.to_csv(path, index=False)
+
+
+def visible_model_text(text: str, tokenizer, max_length: int) -> str:
+    """Return the same text window ALBERT can see."""
+
+    token_ids = tokenizer.encode(
+        text,
+        add_special_tokens=True,
+        truncation=True,
+        max_length=max_length,
+    )
+    return tokenizer.decode(token_ids, skip_special_tokens=True).strip()

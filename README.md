@@ -195,6 +195,10 @@ settings can still request up to:
 200 selected emails x 1 candidate = 200 rewrites per between-round step
 ```
 
+Qwen only receives the same 512-token text window that ALBERT can see. This
+keeps rewriting aligned with the defender and avoids wasting generation on long
+email tails that ALBERT truncates away.
+
 If this is too slow, reduce these in the Model B/C config:
 
 ```yaml
