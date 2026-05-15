@@ -57,6 +57,7 @@ Outputs go under `runs/`, which is intentionally ignored by Git.
 Each round keeps its final model in `round_N/model/`. The current round also
 keeps one rolling epoch checkpoint in `round_N/checkpoint_current/`; that folder
 is overwritten after every epoch.
+For Model B/C, each round starts from the previous round's saved ALBERT model.
 
 Each run is isolated inside a timestamped run folder. Use `--run-id` when you
 want a memorable name:

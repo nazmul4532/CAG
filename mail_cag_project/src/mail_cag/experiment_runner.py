@@ -90,19 +90,23 @@ def run_llm_cyclic_rounds(
     rounds = int(config["training"]["rounds"])
     rewrite_pool = load_existing_rewrites(run_root)
     ollama_model = choose_ollama_model(config)
+    start_model = str(config["model"]["base_model"])
     print(f"ollama model: {ollama_model}")
 
     for round_number in range(1, rounds + 1):
         round_dir = run_root / f"round_{round_number}"
         if resume and round_complete(round_dir):
             print(f"round {round_number} already complete; skipping training")
+            start_model = str(round_dir / "model")
             continue
 
         round_dir.mkdir(parents=True, exist_ok=True)
         train_df = pd.concat([clean_train_df, rewrite_pool], ignore_index=True)
         train_df.to_csv(round_dir / "training_data.csv", index=False)
 
-        result = train_one_round(config, round_dir, train_df, eval_df)
+        print(f"round {round_number} starts from: {start_model}")
+        result = train_one_round(config, round_dir, train_df, eval_df, start_model)
+        start_model = str(result.model_dir)
         print(f"round {round_number} eval accuracy: {result.eval_accuracy:.4f}")
 
         if round_number == rounds:
@@ -128,13 +132,14 @@ def train_one_round(
     round_dir: Path,
     train_df: pd.DataFrame,
     eval_df: pd.DataFrame,
+    start_model: str | Path | None = None,
 ):
     training = config["training"]
     model = config["model"]
     return train_albert(
         train_df=train_df,
         eval_df=eval_df,
-        model_name=model["base_model"],
+        model_name=start_model or model["base_model"],
         output_dir=round_dir / "model",
         max_length=int(model["max_length"]),
         learning_rate=float(training["learning_rate"]),

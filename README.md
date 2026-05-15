@@ -70,6 +70,8 @@ python mail_cag.py run model-c
 Each completed round keeps its final model under `runs/<experiment>/round_N/model/`.
 During a round, the latest finished epoch is overwritten at
 `runs/<experiment>/round_N/checkpoint_current/`.
+For cyclic Model B/C runs, round 2 starts from `round_1/model`, round 3 starts
+from `round_2/model`, and so on.
 
 Each run gets its own timestamped folder:
 
