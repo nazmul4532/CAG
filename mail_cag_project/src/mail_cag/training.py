@@ -11,6 +11,7 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
+from tqdm.auto import tqdm
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
@@ -77,13 +78,15 @@ def train_albert(
     model.train()
     for epoch in range(1, epochs + 1):
         running_loss = 0.0
-        for batch in train_loader:
+        progress = tqdm(train_loader, desc=f"epoch {epoch}/{epochs}", leave=False)
+        for batch in progress:
             batch = {key: value.to(device) for key, value in batch.items()}
             loss = model(**batch).loss
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             running_loss += float(loss.item())
+            progress.set_postfix(loss=f"{loss.item():.4f}")
         average_loss = running_loss / max(len(train_loader), 1)
         print(f"epoch {epoch}/{epochs} loss: {average_loss:.4f}", flush=True)
         if checkpoint_dir is not None:
@@ -112,7 +115,7 @@ def evaluate_accuracy(model, loader: DataLoader, device: torch.device) -> float:
     total = 0
     model.eval()
     with torch.no_grad():
-        for batch in loader:
+        for batch in tqdm(loader, desc="evaluating", leave=False):
             labels = batch.pop("labels").to(device)
             batch = {key: value.to(device) for key, value in batch.items()}
             predictions = model(**batch).logits.argmax(dim=1)
@@ -141,7 +144,7 @@ def add_true_label_confidence(
     scores: list[float] = []
     model.eval()
     with torch.no_grad():
-        for batch in loader:
+        for batch in tqdm(loader, desc="scoring emails", leave=False):
             labels = batch.pop("labels").to(device)
             batch = {key: value.to(device) for key, value in batch.items()}
             probs = model(**batch).logits.softmax(dim=1)

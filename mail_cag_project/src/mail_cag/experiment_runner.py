@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from tqdm.auto import tqdm
 
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
@@ -189,8 +190,12 @@ def generate_round_rewrites(
     output_path = round_dir / "generated_rewrites.csv"
     rows = []
     print(f"selected emails to rewrite: {len(selected)}", flush=True)
-    for index, (_, row) in enumerate(selected.iterrows(), start=1):
-        print(f"rewriting email: {index}/{len(selected)}", flush=True)
+    progress = tqdm(
+        selected.iterrows(),
+        total=len(selected),
+        desc="rewriting emails",
+    )
+    for _, row in progress:
         rewrites = rewrite_email(
             base_url=llm.get("base_url", "http://127.0.0.1:11434"),
             model=ollama_model,
@@ -208,7 +213,7 @@ def generate_round_rewrites(
             item["generated_by"] = ollama_model
             rows.append(item)
         pd.DataFrame(rows).to_csv(output_path, index=False)
-        print(f"finished email: {index}/{len(selected)}", flush=True)
+        progress.set_postfix(saved=len(rows))
 
     print(f"round rewrites: {len(rows)}")
     return pd.DataFrame(rows)

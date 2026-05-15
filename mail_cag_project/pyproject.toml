@@ -12,6 +12,7 @@ dependencies = [
   "pandas",
   "scikit-learn",
   "torch",
+  "tqdm",
   "transformers",
 ]
 
