@@ -37,6 +37,8 @@ def run_config(
         raw_path,
         float(config["data"]["sample_frac_per_label"]),
         int(config["data"].get("random_seed", 42)),
+        tokenizer_name=config["model"]["base_model"],
+        max_token_length=config["data"].get("max_token_length"),
     )
     df = add_email_text(df)
     train_df, eval_df = split_train_eval(df, int(config["data"].get("random_seed", 42)))

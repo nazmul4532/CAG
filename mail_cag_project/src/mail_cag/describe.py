@@ -25,10 +25,19 @@ def describe_config(config_path: str | Path) -> None:
     raw_path = resolve_from_config(config_path, config["data"]["raw_path"])
     sample_frac = float(config["data"]["sample_frac_per_label"])
     seed = int(config["data"].get("random_seed", 42))
-    df = load_ceas_subset(raw_path, sample_frac, seed)
+    max_token_length = config["data"].get("max_token_length")
+    df = load_ceas_subset(
+        raw_path,
+        sample_frac,
+        seed,
+        tokenizer_name=config["model"]["base_model"],
+        max_token_length=max_token_length,
+    )
 
     print(f"experiment: {config['name']}")
     print(f"raw data: {raw_path}")
+    if max_token_length:
+        print(f"max token length filter: {max_token_length}")
     print(f"sample frac per label: {sample_frac}")
     print(f"subset rows: {len(df)}")
     print(f"label counts: {describe_labels(df)}")

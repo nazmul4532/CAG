@@ -35,9 +35,12 @@ The configs currently use 6% of CEAS for smoke testing:
 
 ```yaml
 sample_frac_per_label: 0.06
+max_token_length: 1500
 ```
 
 Move this toward `1.0` only after the pipeline is behaving.
+Emails longer than 1500 ALBERT tokens are filtered out before sampling. ALBERT
+then trains/evaluates with `max_length: 512`.
 
 ## Repository Layout
 

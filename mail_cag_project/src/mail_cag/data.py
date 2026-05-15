@@ -4,12 +4,15 @@ from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from transformers import AutoTokenizer
 
 
 def load_ceas_subset(
     raw_path: str | Path,
     sample_frac_per_label: float,
     random_seed: int = 42,
+    tokenizer_name: str | None = None,
+    max_token_length: int | None = None,
 ) -> pd.DataFrame:
     """Load the same percentage from each CEAS label.
 
@@ -19,6 +22,10 @@ def load_ceas_subset(
     """
 
     df = pd.read_csv(raw_path)
+    df = add_email_text(df)
+    if tokenizer_name and max_token_length:
+        df = filter_by_token_length(df, tokenizer_name, max_token_length)
+
     parts = []
     for label in sorted(df["label"].dropna().unique()):
         part = df[df["label"] == label].sample(
@@ -27,6 +34,25 @@ def load_ceas_subset(
         )
         parts.append(part)
     return pd.concat(parts).sample(frac=1, random_state=random_seed).reset_index(drop=True)
+
+
+def filter_by_token_length(
+    df: pd.DataFrame,
+    tokenizer_name: str,
+    max_token_length: int,
+) -> pd.DataFrame:
+    """Keep emails within the configured token-length cap."""
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, local_files_only=True)
+    encoded = tokenizer(
+        df["text"].astype(str).tolist(),
+        add_special_tokens=True,
+        truncation=False,
+        padding=False,
+        verbose=False,
+    )
+    keep = [len(tokens) <= max_token_length for tokens in encoded["input_ids"]]
+    return df[keep].reset_index(drop=True)
 
 
 def describe_labels(df: pd.DataFrame) -> dict[int, int]:
@@ -38,6 +64,9 @@ def describe_labels(df: pd.DataFrame) -> dict[int, int]:
 
 def add_email_text(df: pd.DataFrame) -> pd.DataFrame:
     """Create one text field from the useful CEAS email columns."""
+
+    if "text" in df.columns:
+        return df
 
     result = df.copy()
     subject = result["subject"].fillna("").astype(str)

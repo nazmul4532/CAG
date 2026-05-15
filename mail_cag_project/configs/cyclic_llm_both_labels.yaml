@@ -8,12 +8,13 @@ research_question: >
 data:
   raw_path: ../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
   sample_frac_per_label: 0.06
+  max_token_length: 1500
   validation_seed_path: ../../validation_set_0.csv
   random_seed: 42
 
 model:
   base_model: albert-base-v2
-  max_length: 256
+  max_length: 512
   num_labels: 2
 
 training:
