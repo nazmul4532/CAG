@@ -26,9 +26,10 @@ round 2 starts from round_1/model
 round 3 starts from round_2/model
 ```
 
-The attacker for the first implementation is local Ollama with `qwen3:14b`.
-`qwen3:8b` and `qwen3:4b` are fallbacks. TextFooler, PWWS, and DeepWordBug are
-kept for later held-out evaluation, not training-data generation.
+The attacker for the first implementation is local Ollama with `qwen3:8b`.
+`qwen3:14b` is kept as a stronger but slower fallback/comparison model, and
+`qwen3:4b` is the smallest fallback. TextFooler, PWWS, and DeepWordBug are kept
+for later held-out evaluation, not training-data generation.
 
 The configs currently use 6% of CEAS for smoke testing:
 
@@ -79,7 +80,7 @@ ollama list
 Pull the recommended local models if needed:
 
 ```bash
-OLLAMA_MODELS="qwen3:14b qwen3:8b" scripts/download_models.sh
+OLLAMA_MODELS="qwen3:8b qwen3:14b" scripts/download_models.sh
 ```
 
 The raw CEAS file should be here:

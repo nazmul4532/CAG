@@ -2,8 +2,8 @@ ollama:
   enabled: true
   base_url: http://127.0.0.1:11434
   preferred_models:
-    - qwen3:14b
     - qwen3:8b
+    - qwen3:14b
     - qwen3:4b
   optional_models:
     - dolphin3

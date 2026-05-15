@@ -81,7 +81,7 @@ runs/model_b_llm_phishing_only/b_smoke_001/
 
 - Dataset: CEAS at `sample_frac_per_label: 0.06`.
 - Defender: `albert-base-v2`.
-- Local LLM attacker: `qwen3:14b`.
+- Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.
 - Between-round rewrite budget: 200 selected emails, 3 candidates each.
 

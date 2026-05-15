@@ -38,9 +38,9 @@ attacks:
 
 llm:
   provider: ollama
-  model: qwen3:14b
+  model: qwen3:8b
   fallback_models:
-    - qwen3:8b
+    - qwen3:14b
     - qwen3:4b
   temperature: 0.6
   top_p: 0.9
