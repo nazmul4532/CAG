@@ -6,10 +6,8 @@ research_question: >
   the LLM only rewrites phishing-labeled examples?
 
 data:
-  raw_path: ../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
+  raw_path: ../../legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv
   sample_frac_per_label: 0.06
-  language: en
-  max_token_length: 1600
   validation_seed_path: ../../validation_set_0.csv
   random_seed: 42
 

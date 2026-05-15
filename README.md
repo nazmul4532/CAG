@@ -37,13 +37,11 @@ The configs currently use 6% of CEAS for smoke testing:
 
 ```yaml
 sample_frac_per_label: 0.06
-language: en
-max_token_length: 1600
 ```
 
-Move this toward `1.0` only after the pipeline is behaving. Non-English emails
-and emails longer than 1600 ALBERT tokens are filtered out before sampling.
-ALBERT then trains/evaluates with `max_length: 512`.
+Move this toward `1.0` only after the pipeline is behaving. The configs use a
+prepared CEAS file containing English emails up to 1600 ALBERT tokens. ALBERT
+then trains/evaluates with `max_length: 512`.
 
 ## Repository Layout
 
@@ -93,6 +91,18 @@ The raw CEAS file should be here:
 
 ```text
 legacy_workspace/artifacts/data/raw/CEAS_08.csv
+```
+
+Prepare the English/1600-token CEAS file:
+
+```bash
+python scripts/prepare_ceas.py
+```
+
+That writes:
+
+```text
+legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv
 ```
 
 ## Running Experiments
