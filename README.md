@@ -194,6 +194,7 @@ round_N/training_data.csv    data used for that round
 round_N/generated_rewrites.csv
 round_N/rewrite_quality.csv
 round_N/rewrite_quality_summary.json
+rewrite_cache.csv              cached LLM rewrites for this run
 ```
 
 During LLM rewriting, progress should print as:
@@ -218,6 +219,16 @@ batch:
 attacks:
   save_every_rewrites: 50
 ```
+
+LLM rewrites are also cached in the run folder:
+
+```text
+runs/<experiment>/<run_id>/rewrite_cache.csv
+```
+
+The cache key includes the actual prompt, Ollama model, candidate count,
+temperature, and top-p. If the same rewrite request appears again, the runner
+reuses the cached rewrite instead of calling Ollama again.
 
 Qwen only receives the same text window that the current defender can see. With
 today's ALBERT config, that is 512 tokens. This keeps rewriting aligned with the

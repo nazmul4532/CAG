@@ -10,7 +10,8 @@ from transformers import AutoTokenizer
 
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
-from mail_cag.llm_rewriter import choose_ollama_model, rewrite_email
+from mail_cag.llm_rewriter import choose_ollama_model, rewrite_cache_key, rewrite_email
+from mail_cag.rewrite_cache import RewriteCache
 from mail_cag.rewrite_quality import write_rewrite_quality_report
 from mail_cag.run_storage import (
     choose_run_root,
@@ -194,6 +195,7 @@ def generate_round_rewrites(
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
     output_path = round_dir / "generated_rewrites.csv"
+    rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
     print(f"selected emails to rewrite: {len(selected)}", flush=True)
@@ -203,19 +205,36 @@ def generate_round_rewrites(
         desc="rewriting emails",
     )
     for _, row in progress:
-        rewrites = rewrite_email(
-            base_url=llm.get("base_url", "http://127.0.0.1:11434"),
+        visible_text = visible_defender_text(
+            text=str(row["text"]),
+            tokenizer=tokenizer,
+            max_length=int(config["model"]["max_length"]),
+        )
+        temperature = float(llm.get("temperature", 0.6))
+        top_p = float(llm.get("top_p", 0.9))
+        cache_key = rewrite_cache_key(
             model=ollama_model,
             label=int(row["label"]),
-            text=visible_defender_text(
-                text=str(row["text"]),
-                tokenizer=tokenizer,
-                max_length=int(config["model"]["max_length"]),
-            ),
+            text=visible_text,
             candidates=candidates,
-            temperature=float(llm.get("temperature", 0.6)),
-            top_p=float(llm.get("top_p", 0.9)),
+            temperature=temperature,
+            top_p=top_p,
         )
+        rewrites = rewrite_cache.get(cache_key)
+        if rewrites is None:
+            rewrites = rewrite_email(
+                base_url=llm.get("base_url", "http://127.0.0.1:11434"),
+                model=ollama_model,
+                label=int(row["label"]),
+                text=visible_text,
+                candidates=candidates,
+                temperature=temperature,
+                top_p=top_p,
+            )
+            rewrite_cache.put(cache_key, rewrites)
+        else:
+            progress.write("cache hit")
+
         for rewrite in rewrites:
             item = row.to_dict()
             item["source_text"] = item["text"]
@@ -227,9 +246,11 @@ def generate_round_rewrites(
             rows.append(item)
         if len(rows) % save_every == 0:
             pd.DataFrame(rows).to_csv(output_path, index=False)
-        progress.set_postfix(saved=len(rows))
+            progress.write(f"saved rewrites: {len(rows)}")
+        progress.set_postfix(generated=len(rows))
 
     pd.DataFrame(rows).to_csv(output_path, index=False)
+    print(f"saved rewrites: {len(rows)}")
     print(f"round rewrites: {len(rows)}")
     rewrites_df = pd.DataFrame(rows)
     write_rewrite_quality_report(

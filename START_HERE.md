@@ -84,6 +84,7 @@ Generated runs live under `runs/`, ignored by Git.
 runs/model_b_llm_phishing_only/b_smoke_qwen8b_quality_001/
   clean_train.csv
   clean_eval.csv
+  rewrite_cache.csv
   round_1/
     model/
     checkpoint_current/

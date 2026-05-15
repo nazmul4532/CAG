@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
-
 
 def choose_ollama_model(config: dict[str, Any]) -> str:
     """Return the first configured Ollama model that is installed locally."""
@@ -51,6 +51,28 @@ def rewrite_email(
         },
     )
     return parse_rewrites(data.get("response", ""), candidates)
+
+
+def rewrite_cache_key(
+    *,
+    model: str,
+    label: int,
+    text: str,
+    candidates: int,
+    temperature: float,
+    top_p: float,
+) -> str:
+    """Return a stable key for one LLM rewrite request."""
+
+    payload = {
+        "model": model,
+        "prompt": build_prompt(label=label, text=text, candidates=candidates),
+        "candidates": int(candidates),
+        "temperature": float(temperature),
+        "top_p": float(top_p),
+    }
+    encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def build_prompt(label: int, text: str, candidates: int) -> str:
