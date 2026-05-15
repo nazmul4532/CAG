@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
-import shutil
+
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 import pandas as pd
 import torch
@@ -56,11 +60,8 @@ def train_albert(
     """Fine-tune one ALBERT classifier and save it."""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name,
-        num_labels=num_labels,
-    ).to(device)
+    tokenizer = load_tokenizer(model_name)
+    model = load_classifier(model_name, num_labels).to(device)
 
     train_loader = DataLoader(
         EmailDataset(train_df, tokenizer, max_length),
@@ -130,8 +131,11 @@ def add_true_label_confidence(
     """Score each row by the model confidence for its true label."""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(device)
+    tokenizer = load_tokenizer(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_dir,
+        local_files_only=True,
+    ).to(device)
     loader = DataLoader(EmailDataset(df, tokenizer, max_length), batch_size=batch_size)
 
     scores: list[float] = []
@@ -146,3 +150,34 @@ def add_true_label_confidence(
     result = df.copy()
     result["true_label_confidence"] = scores
     return result
+
+
+def load_tokenizer(model_name_or_dir: str | Path):
+    """Load tokenizers from the local Hugging Face cache only."""
+
+    try:
+        return AutoTokenizer.from_pretrained(
+            model_name_or_dir,
+            local_files_only=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(
+            f"Could not load tokenizer locally: {model_name_or_dir}. "
+            "Run `scripts/download_models.sh` while online, then try again."
+        ) from exc
+
+
+def load_classifier(model_name: str, num_labels: int):
+    """Load ALBERT locally and create the task-specific classifier head."""
+
+    try:
+        return AutoModelForSequenceClassification.from_pretrained(
+            model_name,
+            num_labels=num_labels,
+            local_files_only=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(
+            f"Could not load model locally: {model_name}. "
+            "Run `scripts/download_models.sh` while online, then try again."
+        ) from exc
