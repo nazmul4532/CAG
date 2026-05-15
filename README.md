@@ -12,9 +12,18 @@ rounds.
 - `validation_set_0.csv`: small validation seed tracked in Git.
 - `scripts/bootstrap.sh`: creates the Python environment and installs packages.
 - `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
+- `reports/notebook_exports/`: exported notebook HTML reports.
+- `data/raw/`: local raw datasets, ignored by Git.
+- `outputs/experiments/`: local experiment runs, checkpoints, and generated outputs,
+  ignored by Git.
+- `docs/reference/`: local reference documents, ignored unless explicitly promoted.
 
 Large raw datasets, local caches, trained checkpoints, and generated experiment
 folders are intentionally ignored by Git.
+
+The root-level `CEAS_08.csv` and `albert_adversarial_*` paths are compatibility
+symlinks into `data/raw/` and `outputs/experiments/`. They keep the existing
+notebooks runnable without rewriting old cells.
 
 ## Bootstrap
 

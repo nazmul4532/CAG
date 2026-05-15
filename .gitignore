@@ -31,7 +31,9 @@ ENV/
 .cache/
 
 # Generated experiment workspaces
+albert_adversarial_game_model*
 albert_adversarial_game_model*/
+albert_adversarial_val_sets*
 albert_adversarial_val_sets*/
 runs/
 outputs/
