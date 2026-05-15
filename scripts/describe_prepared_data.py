@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -35,16 +36,10 @@ def main() -> None:
     path = (PROJECT_ROOT / args.path).resolve()
     df = pd.read_csv(path)
     token_lengths = measure_token_lengths(df["text"].fillna("").astype(str), args.tokenizer)
+    stats = build_stats(path, df, token_lengths, args.tokenizer)
 
-    print(f"file: {path}")
-    print(f"rows: {len(df)}")
-    print(f"columns: {list(df.columns)}")
-    print(f"label counts: {describe_labels(df)}")
-    print("label percent:", label_percent(df))
-    print_token_stats(token_lengths)
-    print_text_stats(df)
-    print_script_counts(df)
-    print_by_label(df, token_lengths)
+    print_stats(stats)
+    write_stats_files(path, stats)
 
 
 def measure_token_lengths(texts: pd.Series, tokenizer_name: str) -> pd.Series:
@@ -64,39 +59,76 @@ def label_percent(df: pd.DataFrame) -> dict[int, float]:
     return {int(label): round(float(percent), 2) for label, percent in values.items()}
 
 
-def print_token_stats(lengths: pd.Series) -> None:
-    print(f"token mean: {lengths.mean():.1f}")
-    print(f"token median: {int(lengths.median())}")
-    for q in [0.75, 0.90, 0.95, 0.99]:
-        print(f"token p{int(q * 100)}: {int(lengths.quantile(q))}")
-    print(f"token max: {int(lengths.max())}")
-    for cutoff in [128, 256, 384, 512, 1024, 1600]:
-        coverage = (lengths <= cutoff).mean() * 100
-        print(f"coverage <= {cutoff}: {coverage:.2f}%")
+def build_stats(
+    path: Path,
+    df: pd.DataFrame,
+    token_lengths: pd.Series,
+    tokenizer_name: str,
+) -> dict:
+    return {
+        "file": str(path),
+        "description": "Prepared CEAS dataset: English-only, no obvious non-English scripts, <=1600 ALBERT tokens.",
+        "preparation": {
+            "source": "CEAS_08.csv",
+            "language": "en",
+            "blocked_scripts": list(SCRIPT_PATTERNS),
+            "tokenizer": tokenizer_name,
+            "max_token_length": 1600,
+        },
+        "rows": len(df),
+        "columns": list(df.columns),
+        "label_counts": describe_labels(df),
+        "label_percent": label_percent(df),
+        "token_stats": token_stats(token_lengths),
+        "text_stats": text_stats(df),
+        "script_counts": script_counts(df),
+        "by_label": by_label_stats(df, token_lengths),
+    }
 
 
-def print_text_stats(df: pd.DataFrame) -> None:
+def token_stats(lengths: pd.Series) -> dict:
+    stats = {
+        "mean": round(float(lengths.mean()), 1),
+        "median": int(lengths.median()),
+        "p75": int(lengths.quantile(0.75)),
+        "p90": int(lengths.quantile(0.90)),
+        "p95": int(lengths.quantile(0.95)),
+        "p99": int(lengths.quantile(0.99)),
+        "max": int(lengths.max()),
+    }
+    stats["coverage_percent"] = {
+        str(cutoff): round(float((lengths <= cutoff).mean() * 100), 2)
+        for cutoff in [128, 256, 384, 512, 1024, 1600]
+    }
+    return stats
+
+
+def text_stats(df: pd.DataFrame) -> dict:
     text_lengths = df["text"].fillna("").astype(str).str.len()
-    print(f"char mean: {text_lengths.mean():.1f}")
-    print(f"char median: {int(text_lengths.median())}")
+    stats = {
+        "char_mean": round(float(text_lengths.mean()), 1),
+        "char_median": int(text_lengths.median()),
+    }
     if "urls" in df:
         has_url = df["urls"].fillna(0).astype(float) > 0
-        print(f"url rate: {has_url.mean() * 100:.2f}%")
+        stats["url_rate_percent"] = round(float(has_url.mean() * 100), 2)
+    return stats
 
 
-def print_script_counts(df: pd.DataFrame) -> None:
+def script_counts(df: pd.DataFrame) -> dict[str, int]:
     text = df["text"].fillna("").astype(str)
+    counts = {}
     for name, pattern in SCRIPT_PATTERNS.items():
-        count = int(text.str.contains(pattern, regex=True).sum())
-        print(f"{name} rows: {count}")
+        counts[name] = int(text.str.contains(pattern, regex=True).sum())
+    return counts
 
 
-def print_by_label(df: pd.DataFrame, token_lengths: pd.Series) -> None:
+def by_label_stats(df: pd.DataFrame, token_lengths: pd.Series) -> dict[str, dict]:
     frame = pd.DataFrame({"label": df["label"], "tokens": token_lengths})
     if "urls" in df:
         frame["has_url"] = df["urls"].fillna(0).astype(float) > 0
 
-    print("by label:")
+    stats = {}
     for label, part in frame.groupby("label"):
         line = {
             "rows": len(part),
@@ -107,7 +139,83 @@ def print_by_label(df: pd.DataFrame, token_lengths: pd.Series) -> None:
         }
         if "has_url" in part:
             line["url_rate"] = round(float(part["has_url"].mean() * 100), 2)
-        print(f"  {int(label)}: {line}")
+        stats[str(int(label))] = line
+    return stats
+
+
+def print_stats(stats: dict) -> None:
+    print(f"file: {stats['file']}")
+    print(stats["description"])
+    print(f"rows: {stats['rows']}")
+    print(f"columns: {stats['columns']}")
+    print(f"label counts: {stats['label_counts']}")
+    print(f"label percent: {stats['label_percent']}")
+    print(f"token stats: {stats['token_stats']}")
+    print(f"text stats: {stats['text_stats']}")
+    print(f"script counts: {stats['script_counts']}")
+    print(f"by label: {stats['by_label']}")
+
+
+def write_stats_files(path: Path, stats: dict) -> None:
+    json_path = path.with_name(path.stem + "_stats.json")
+    md_path = path.with_name(path.stem + "_stats.md")
+
+    json_path.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(stats), encoding="utf-8")
+    print(f"saved: {json_path}")
+    print(f"saved: {md_path}")
+
+
+def render_markdown(stats: dict) -> str:
+    token = stats["token_stats"]
+    text = stats["text_stats"]
+    lines = [
+        "# Prepared CEAS Dataset Stats",
+        "",
+        stats["description"],
+        "",
+        f"- File: `{stats['file']}`",
+        f"- Rows: {stats['rows']}",
+        f"- Columns: {', '.join(stats['columns'])}",
+        f"- Label counts: {stats['label_counts']}",
+        f"- Label percent: {stats['label_percent']}",
+        "",
+        "## Preparation",
+        "",
+        f"- Source: {stats['preparation']['source']}",
+        f"- Language: {stats['preparation']['language']}",
+        f"- Blocked scripts: {', '.join(stats['preparation']['blocked_scripts'])}",
+        f"- Tokenizer: {stats['preparation']['tokenizer']}",
+        f"- Max token length: {stats['preparation']['max_token_length']}",
+        "",
+        "## Token Lengths",
+        "",
+        f"- Mean: {token['mean']}",
+        f"- Median: {token['median']}",
+        f"- p75: {token['p75']}",
+        f"- p90: {token['p90']}",
+        f"- p95: {token['p95']}",
+        f"- p99: {token['p99']}",
+        f"- Max: {token['max']}",
+        f"- Coverage percent: {token['coverage_percent']}",
+        "",
+        "## Text And URL Stats",
+        "",
+        f"- Character mean: {text['char_mean']}",
+        f"- Character median: {text['char_median']}",
+        f"- URL rate percent: {text.get('url_rate_percent', 'n/a')}",
+        "",
+        "## Script Checks",
+        "",
+        f"- Script counts: {stats['script_counts']}",
+        "",
+        "## By Label",
+        "",
+        f"- Label 0: {stats['by_label'].get('0')}",
+        f"- Label 1: {stats['by_label'].get('1')}",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
