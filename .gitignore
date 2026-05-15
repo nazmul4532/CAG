@@ -1,0 +1,63 @@
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python/Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+env/
+ENV/
+
+# ML/NLP caches
+.nltk/
+.torch/
+.textattack/
+.cache/
+
+# Generated model runs and adversarial outputs
+albert_adversarial_game_model*/
+albert_adversarial_val_sets*/
+runs/
+outputs/
+checkpoints/
+checkpoint-*/
+wandb/
+mlruns/
+
+# Large model/training artifacts
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+*.onnx
+optimizer.pt
+scheduler.pt
+trainer_state.json
+rng_state.pth
+
+# Large/raw datasets should live outside Git or in DVC/Git LFS.
+CEAS_08.csv
+data/raw/
+datasets/
+
+# Generated exports/logs
+*.html
+*.log
+*.tmp
+
+# Unrelated local documents
+MS_N3_maximum-flow-minimum-cut-sample-questions.docx
