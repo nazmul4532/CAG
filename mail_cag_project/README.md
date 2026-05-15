@@ -69,6 +69,7 @@ python mail_cag.py run model-a --dry-run --run-id baseline_smoke_001
 python mail_cag.py run model-a --run-id baseline_smoke_001
 python mail_cag.py run model-b --run-id b_smoke_001
 python mail_cag.py run model-b --resume --run-id b_smoke_001
+python mail_cag.py evaluate model-b --run-id b_smoke_001
 ```
 
 Training outputs are written to `../runs/`. Model B/C carry defender weights

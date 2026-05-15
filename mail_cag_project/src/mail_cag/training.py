@@ -9,6 +9,7 @@ os.environ.setdefault("USE_TF", "0")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 import pandas as pd
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
@@ -153,6 +154,58 @@ def add_true_label_confidence(
     result = df.copy()
     result["true_label_confidence"] = scores
     return result
+
+
+def evaluate_saved_model(
+    *,
+    model_dir: Path,
+    eval_df: pd.DataFrame,
+    max_length: int,
+    batch_size: int,
+) -> dict[str, float | int]:
+    """Evaluate one saved model on a clean dataframe."""
+
+    labels, predictions = predict_saved_model(
+        model_dir=model_dir,
+        eval_df=eval_df,
+        max_length=max_length,
+        batch_size=batch_size,
+    )
+    return {
+        "rows": len(labels),
+        "accuracy": float(accuracy_score(labels, predictions)),
+        "precision": float(precision_score(labels, predictions, zero_division=0)),
+        "recall": float(recall_score(labels, predictions, zero_division=0)),
+        "f1": float(f1_score(labels, predictions, zero_division=0)),
+    }
+
+
+def predict_saved_model(
+    *,
+    model_dir: Path,
+    eval_df: pd.DataFrame,
+    max_length: int,
+    batch_size: int,
+) -> tuple[list[int], list[int]]:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = load_tokenizer(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_dir,
+        local_files_only=True,
+    ).to(device)
+    loader = DataLoader(EmailDataset(eval_df, tokenizer, max_length), batch_size=batch_size)
+
+    labels: list[int] = []
+    predictions: list[int] = []
+    model.eval()
+    with torch.no_grad():
+        for batch in tqdm(loader, desc="evaluating saved model", leave=False):
+            batch_labels = batch.pop("labels").to(device)
+            batch = {key: value.to(device) for key, value in batch.items()}
+            batch_predictions = model(**batch).logits.argmax(dim=1)
+            labels.extend(batch_labels.cpu().tolist())
+            predictions.extend(batch_predictions.cpu().tolist())
+    return labels, predictions
 
 
 def load_tokenizer(model_name_or_dir: str | Path):

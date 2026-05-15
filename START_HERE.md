@@ -37,6 +37,12 @@ python mail_cag.py describe model-b
 python mail_cag.py describe model-c
 ```
 
+Download required local models:
+
+```bash
+scripts/download_required_models.sh
+```
+
 Dry-run before training:
 
 ```bash
@@ -55,6 +61,13 @@ Model C is the same shape:
 ```bash
 python mail_cag.py run model-c --run-id c_smoke_001
 python mail_cag.py run model-c --resume --run-id c_smoke_001
+```
+
+Evaluate a completed run:
+
+```bash
+python mail_cag.py evaluate model-b --run-id b_smoke_001
+python mail_cag.py evaluate model-b --run-id b_smoke_001 --round 1
 ```
 
 ## Where Things Go

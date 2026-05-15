@@ -82,6 +82,22 @@ def run(
     )
 
 
+def evaluate(
+    config_name: str,
+    run_id: str | None,
+    round_number: int | None,
+) -> None:
+    ensure_import_path()
+
+    from mail_cag.evaluator import evaluate_config
+
+    evaluate_config(
+        resolve_config(config_name),
+        run_id=run_id,
+        round_number=round_number,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Friendly entrypoint for the Mail-CAG project."
@@ -130,9 +146,28 @@ def main() -> None:
         action="store_true",
         help="Resume a run by skipping completed rounds and reusing saved rewrites.",
     )
-    subparsers.add_parser(
+    evaluate_parser = subparsers.add_parser(
         "evaluate",
-        help="Planned next step: evaluate a trained experiment.",
+        help="Evaluate a saved run on its clean eval split.",
+    )
+    evaluate_parser.add_argument(
+        "config",
+        nargs="?",
+        default="cyclic",
+        help=(
+            "One of baseline/model-a, model-b/phishing-only, "
+            "model-c/both-labels, cyclic, v5, or a config path. Default: cyclic."
+        ),
+    )
+    evaluate_parser.add_argument(
+        "--run-id",
+        help="Run folder to evaluate. Defaults to latest for the config.",
+    )
+    evaluate_parser.add_argument(
+        "--round",
+        type=int,
+        dest="round_number",
+        help="Round number to evaluate. Defaults to the latest completed round.",
     )
 
     args = parser.parse_args()
@@ -151,10 +186,7 @@ def main() -> None:
         return
 
     if args.command == "evaluate":
-        print(
-            "`python mail_cag.py evaluate` is not implemented yet. "
-            "Next we will build this around the config files."
-        )
+        evaluate(args.config, run_id=args.run_id, round_number=args.round_number)
         return
 
     parser.error(f"Unknown command: {args.command}")

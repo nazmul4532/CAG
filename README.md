@@ -80,7 +80,7 @@ ollama list
 Pull the recommended local models if needed:
 
 ```bash
-OLLAMA_MODELS="qwen3:8b qwen3:14b" scripts/download_models.sh
+scripts/download_required_models.sh
 ```
 
 The raw CEAS file should be here:
@@ -127,6 +127,20 @@ python mail_cag.py run model-b --resume --run-id b_smoke_001
 python mail_cag.py run model-c --resume --run-id c_smoke_001
 ```
 
+Evaluate the latest completed round on the clean eval split:
+
+```bash
+python mail_cag.py evaluate model-a --run-id baseline_smoke_001
+python mail_cag.py evaluate model-b --run-id b_smoke_001
+python mail_cag.py evaluate model-c --run-id c_smoke_001
+```
+
+Evaluate a specific round:
+
+```bash
+python mail_cag.py evaluate model-b --run-id b_smoke_001 --round 1
+```
+
 Each run gets its own folder:
 
 ```text
@@ -170,7 +184,6 @@ attacks:
 
 Near-term:
 
-- Add `python mail_cag.py evaluate`.
 - Evaluate Model A/B/C with TextFooler, PWWS, and DeepWordBug.
 - Add analysis notebooks that read saved `runs/` outputs.
 - Add better run summaries and metrics CSV files.
