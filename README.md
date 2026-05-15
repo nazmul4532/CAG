@@ -7,13 +7,18 @@ rounds.
 
 ## Repository Layout
 
-- `NLP_Adverserial_Game_v10.ipynb`: latest full cyclic adversarial game notebook.
-- `NLP_Adverserial_Game_v10_dummy.ipynb`: latest small/debug cyclic run notebook.
+- `approach_v4_cumulative_game.ipynb`: active v4 approach; cumulative
+  adversarial memory across rounds.
+- `approach_v5_budgeted_roundwise_game.ipynb`: active v5 approach; fresh clean
+  subset plus current-round adversarial samples with explicit budgets.
+- `approach_v5_dummy_debug.ipynb`: small/debug v5 run.
 - `modified_attacker.py`: patched TextAttack attacker used by the notebooks.
 - `validation_set_0.csv`: small validation seed tracked in Git.
+- `docs/approaches.md`: notes on the active v4 and v5 experiment designs.
 - `scripts/bootstrap.sh`: creates the Python environment and installs packages.
 - `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
-- `reports/notebook_exports/`: latest exported notebook HTML reports.
+- `reports/approach_v4/`: v4 HTML exports and evaluation reports.
+- `reports/approach_v5/`: v5 HTML exports and evaluation reports.
 - `archive/past_attempts/`: older notebooks, older HTML exports, and old root links.
 - `data/raw/`: local raw datasets, ignored by Git.
 - `outputs/experiments/`: local experiment runs, checkpoints, and generated outputs,
@@ -23,10 +28,17 @@ rounds.
 Large raw datasets, local caches, trained checkpoints, and generated experiment
 folders are intentionally ignored by Git.
 
-The root-level `CEAS_08.csv`, `albert_adversarial_game_model_v5`,
-`albert_adversarial_game_model_v5dummy`, and `albert_adversarial_val_sets_v5dummy`
-paths are compatibility symlinks into `data/raw/` and `outputs/experiments/`.
-They keep the current notebooks runnable without rewriting old cells.
+The root-level `CEAS_08.csv` and active `albert_adversarial_*` paths are
+compatibility symlinks into `data/raw/` and `outputs/experiments/`. They keep
+the current notebooks runnable without rewriting old cells.
+
+Active output links currently include:
+
+- `albert_adversarial_game_model_v4`
+- `albert_adversarial_val_sets_v4`
+- `albert_adversarial_game_model_v5`
+- `albert_adversarial_game_model_v5dummy`
+- `albert_adversarial_val_sets_v5dummy`
 
 ## Bootstrap
 
