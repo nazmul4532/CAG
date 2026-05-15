@@ -57,14 +57,17 @@ def build_prompt(label: int, text: str, candidates: int) -> str:
     label_name = "phishing" if int(label) == 1 else "benign"
     return f"""You are helping a defensive email-security research experiment.
 
-Rewrite the email below into {candidates} different versions.
+Rewrite the email below into {candidates} label-preserving version.
 
 Rules:
 - Preserve the original label: {label_name}.
 - Preserve the core meaning and intent.
+- Return exactly one rewritten email.
+- Do not return JSON, dictionaries, lists, markdown, or explanations.
+- Preserve the same spam/phishing style, URL behavior, language, and suspicious intent.
+- Do not make it cleaner or more professional than the original.
 - Do not add new URLs, phone numbers, attachments, brands, names, credentials, or payment instructions.
-- Do not make the email more harmful or more actionable.
-- Return only a JSON array of strings.
+- Do not make the email more harmful or more actionable than the original.
 
 Email:
 \"\"\"
@@ -74,9 +77,12 @@ Email:
 
 
 def parse_rewrites(response: str, candidates: int) -> list[str]:
-    """Parse a JSON-array response, with a small fallback for plain lines."""
+    """Parse the model response into one or more rewrite strings."""
 
     cleaned = response.strip()
+    if candidates == 1:
+        return [strip_code_fence(cleaned)] if cleaned else []
+
     try:
         parsed = json.loads(cleaned)
         if isinstance(parsed, list):
@@ -86,6 +92,13 @@ def parse_rewrites(response: str, candidates: int) -> list[str]:
 
     lines = [line.strip("- 1234567890.").strip() for line in cleaned.splitlines()]
     return [line for line in lines if line][:candidates]
+
+
+def strip_code_fence(text: str) -> str:
+    if text.startswith("```") and text.endswith("```"):
+        lines = text.splitlines()
+        return "\n".join(lines[1:-1]).strip()
+    return text
 
 
 def _ollama_request(

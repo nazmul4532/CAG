@@ -30,6 +30,8 @@ The attacker for the first implementation is local Ollama with `qwen3:8b`.
 `qwen3:14b` is kept as a stronger but slower fallback/comparison model, and
 `qwen3:4b` is the smallest fallback. TextFooler, PWWS, and DeepWordBug are kept
 for later held-out evaluation, not training-data generation.
+The LLM prompt asks for exactly one plain rewritten email, not JSON, while
+preserving language, URL behavior, spam/phishing style, and suspicious intent.
 
 The configs currently use 6% of CEAS for smoke testing:
 
