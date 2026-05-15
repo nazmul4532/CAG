@@ -93,7 +93,7 @@ runs/model_b_llm_phishing_only/b_smoke_001/
 ## Current Defaults
 
 - Dataset: prepared English CEAS at `sample_frac_per_label: 0.06`.
-- Prepared file: `legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv`.
+- Prepared file: `data/processed/CEAS_08_en_1600.csv`.
 - Defender: `albert-base-v2` with `max_length: 512`.
 - Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.

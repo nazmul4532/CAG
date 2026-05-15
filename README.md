@@ -102,7 +102,7 @@ python scripts/prepare_ceas.py
 That writes:
 
 ```text
-legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv
+data/processed/CEAS_08_en_1600.csv
 ```
 
 ## Running Experiments

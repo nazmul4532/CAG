@@ -6,7 +6,7 @@ research_question: >
   and improve robustness compared with phishing-only LLM cyclic training?
 
 data:
-  raw_path: ../../legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv
+  raw_path: ../../data/processed/CEAS_08_en_1600.csv
   sample_frac_per_label: 0.06
   validation_seed_path: ../../validation_set_0.csv
   random_seed: 42

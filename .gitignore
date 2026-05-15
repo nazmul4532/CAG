@@ -61,6 +61,7 @@ rng_state.pth
 # Large/raw datasets should live outside Git or in DVC/Git LFS.
 CEAS_08.csv
 data/raw/
+data/processed/
 datasets/
 
 # Scratch files

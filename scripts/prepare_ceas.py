@@ -24,7 +24,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
-        default="legacy_workspace/artifacts/data/processed/CEAS_08_en_1600.csv",
+        default="data/processed/CEAS_08_en_1600.csv",
         help="Prepared output CSV path, relative to the repo root.",
     )
     parser.add_argument("--language", default="en")
