@@ -4,12 +4,12 @@ This project currently has two active cyclic adversarial-game variants.
 
 ## Approach v4: Cumulative Adversarial Game
 
-Notebook: `approach_v4_cumulative_game.ipynb`
+Notebook: `legacy_workspace/notebook_era/approach_v4_cumulative_game.ipynb`
 
 Local outputs:
 
-- `albert_adversarial_game_model_v4`
-- `albert_adversarial_val_sets_v4`
+- `legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4`
+- `legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v4 copy`
 
 Idea:
 
@@ -24,15 +24,15 @@ keeps prior attacks in its training pool.
 
 ## Approach v5: Budgeted Roundwise Game
 
-Notebook: `approach_v5_budgeted_roundwise_game.ipynb`
+Notebook: `legacy_workspace/notebook_era/approach_v5_budgeted_roundwise_game.ipynb`
 
-Debug notebook: `approach_v5_dummy_debug.ipynb`
+Debug notebook: `legacy_workspace/notebook_era/approach_v5_dummy_debug.ipynb`
 
 Local outputs:
 
-- `albert_adversarial_game_model_v5`
-- `albert_adversarial_game_model_v5dummy`
-- `albert_adversarial_val_sets_v5dummy`
+- `legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5`
+- `legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy`
+- `legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v5dummy`
 
 Idea:
 

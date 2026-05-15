@@ -1,9 +1,8 @@
 # Mail-CAG Project Workspace
 
 This folder is the clean, script-first workspace for the cyclic adversarial game
-paper. It does not replace or delete the original notebooks and outputs in the
-repository root. Instead, it gives us a safer place to rebuild the experiment
-logic step by step.
+paper. The original notebooks and outputs live under `../legacy_workspace/`.
+This gives us a safer place to rebuild the experiment logic step by step.
 
 ## Why This Exists
 
@@ -19,14 +18,14 @@ reruns, checkpoints, and analysis. This workspace separates those concerns:
 
 ## Current Legacy Inputs
 
-The workspace references existing local files through the repository root:
+The workspace references existing local files through `legacy_workspace/`:
 
-- raw data: `../CEAS_08.csv` from this folder, or `../../CEAS_08.csv` from config files
-- v4 outputs: `../albert_adversarial_game_model_v4`
-- v5 outputs: `../albert_adversarial_game_model_v5`
-- v5 debug outputs: `../albert_adversarial_game_model_v5dummy`
+- raw data: `../legacy_workspace/artifacts/data/raw/CEAS_08.csv`
+- v4 outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4`
+- v5 outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5`
+- v5 debug outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy`
 
-Those are compatibility symlinks to local ignored data/output folders.
+Those local data/output folders are intentionally ignored by Git.
 
 ## Environment
 

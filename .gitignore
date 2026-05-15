@@ -29,6 +29,7 @@ ENV/
 .torch/
 .textattack/
 .cache/
+legacy_workspace/caches/
 
 # Generated experiment workspaces
 albert_adversarial_game_model*
@@ -37,6 +38,7 @@ albert_adversarial_val_sets*
 albert_adversarial_val_sets*/
 runs/
 outputs/
+legacy_workspace/artifacts/
 checkpoints/
 wandb/
 mlruns/

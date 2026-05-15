@@ -2,7 +2,7 @@ name: approach_v5_budgeted
 description: Budgeted cyclic game with fresh clean samples plus current-round adversarial samples.
 
 data:
-  raw_path: ../../CEAS_08.csv
+  raw_path: ../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
   sample_frac_per_label: 0.06
   validation_seed_path: ../../validation_set_0.csv
   random_seed: 42
@@ -39,7 +39,7 @@ evaluation:
   held_out_attackers: []
 
 paths:
-  legacy_output_dir: ../../albert_adversarial_game_model_v5
-  legacy_debug_output_dir: ../../albert_adversarial_game_model_v5dummy
-  legacy_debug_validation_dir: ../../albert_adversarial_val_sets_v5dummy
+  legacy_output_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5
+  legacy_debug_output_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy
+  legacy_debug_validation_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v5dummy
   run_root: runs/approach_v5_budgeted

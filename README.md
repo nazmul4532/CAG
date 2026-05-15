@@ -7,38 +7,20 @@ rounds.
 
 ## Repository Layout
 
-- `approach_v4_cumulative_game.ipynb`: active v4 approach; cumulative
-  adversarial memory across rounds.
-- `approach_v5_budgeted_roundwise_game.ipynb`: active v5 approach; fresh clean
-  subset plus current-round adversarial samples with explicit budgets.
-- `approach_v5_dummy_debug.ipynb`: small/debug v5 run.
-- `modified_attacker.py`: patched TextAttack attacker used by the notebooks.
+- `mail_cag_project/`: clean script-first workspace for the next version of the
+  paper experiments.
+- `legacy_workspace/`: original notebook-era files and local legacy artifacts.
 - `validation_set_0.csv`: small validation seed tracked in Git.
 - `docs/approaches.md`: notes on the active v4 and v5 experiment designs.
 - `scripts/bootstrap.sh`: creates the Python environment and installs packages.
 - `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
-- `reports/approach_v4/`: v4 HTML exports and evaluation reports.
-- `reports/approach_v5/`: v5 HTML exports and evaluation reports.
-- `archive/past_attempts/`: older notebooks, older HTML exports, and old root links.
-- `data/raw/`: local raw datasets, ignored by Git.
-- `outputs/experiments/`: local experiment runs, checkpoints, and generated outputs,
-  ignored by Git.
-- `docs/reference/`: local reference documents, ignored unless explicitly promoted.
 
 Large raw datasets, local caches, trained checkpoints, and generated experiment
 folders are intentionally ignored by Git.
 
-The root-level `CEAS_08.csv` and active `albert_adversarial_*` paths are
-compatibility symlinks into `data/raw/` and `outputs/experiments/`. They keep
-the current notebooks runnable without rewriting old cells.
-
-Active output links currently include:
-
-- `albert_adversarial_game_model_v4`
-- `albert_adversarial_val_sets_v4`
-- `albert_adversarial_game_model_v5`
-- `albert_adversarial_game_model_v5dummy`
-- `albert_adversarial_val_sets_v5dummy`
+The old root-level `CEAS_08.csv` and `albert_adversarial_*` compatibility
+symlinks now live under `legacy_workspace/root_links/`. The actual local data and
+outputs live under `legacy_workspace/artifacts/`.
 
 ## Bootstrap
 
@@ -105,7 +87,7 @@ HF_MODELS="albert-base-v2" scripts/download_models.sh
 Place the raw CEAS dataset at:
 
 ```text
-CEAS_08.csv
+legacy_workspace/artifacts/data/raw/CEAS_08.csv
 ```
 
 That file is intentionally ignored because it is large/raw data. If we later want
