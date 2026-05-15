@@ -98,6 +98,17 @@ def run_llm_cyclic_rounds(
         if resume and round_complete(round_dir):
             print(f"round {round_number} already complete; skipping training")
             start_model = str(round_dir / "model")
+            if round_number < rounds:
+                rewrites_path = round_dir / "generated_rewrites.csv"
+                if not rewrites_path.exists():
+                    rewrites = generate_round_rewrites(
+                        config=config,
+                        source_df=clean_train_df,
+                        model_dir=round_dir / "model",
+                        round_dir=round_dir,
+                        ollama_model=ollama_model,
+                    )
+                    rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
             continue
 
         round_dir.mkdir(parents=True, exist_ok=True)
