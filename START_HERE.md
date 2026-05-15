@@ -46,28 +46,34 @@ scripts/download_required_models.sh
 Dry-run before training:
 
 ```bash
-python mail_cag.py run model-b --dry-run --run-id b_smoke_001
+python mail_cag.py run model-a --dry-run --run-id a_smoke_001
+python mail_cag.py run model-b --dry-run --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --dry-run --run-id c_smoke_qwen8b_quality_001
 ```
 
-Start or resume Model B:
+Run smoke tests from the beginning:
 
 ```bash
-python mail_cag.py run model-b --run-id b_smoke_001
-python mail_cag.py run model-b --resume --run-id b_smoke_001
+python mail_cag.py run model-a --run-id a_smoke_001
+python mail_cag.py run model-b --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --run-id c_smoke_qwen8b_quality_001
 ```
 
-Model C is the same shape:
+Resume after interruption:
 
 ```bash
-python mail_cag.py run model-c --run-id c_smoke_001
-python mail_cag.py run model-c --resume --run-id c_smoke_001
+python mail_cag.py run model-a --resume --run-id a_smoke_001
+python mail_cag.py run model-b --resume --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --resume --run-id c_smoke_qwen8b_quality_001
 ```
 
 Evaluate a completed run:
 
 ```bash
-python mail_cag.py evaluate model-b --run-id b_smoke_001
-python mail_cag.py evaluate model-b --run-id b_smoke_001 --round 1
+python mail_cag.py evaluate model-a --run-id a_smoke_001
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py evaluate model-c --run-id c_smoke_qwen8b_quality_001
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001 --round 1
 ```
 
 ## Where Things Go
@@ -75,7 +81,7 @@ python mail_cag.py evaluate model-b --run-id b_smoke_001 --round 1
 Generated runs live under `runs/`, ignored by Git.
 
 ```text
-runs/model_b_llm_phishing_only/b_smoke_001/
+runs/model_b_llm_phishing_only/b_smoke_qwen8b_quality_001/
   clean_train.csv
   clean_eval.csv
   round_1/

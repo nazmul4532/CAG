@@ -8,18 +8,20 @@ later.
 
 The current project asks:
 
-1. Does LLM-generated cyclic adversarial training improve ALBERT robustness
-   compared with clean ALBERT?
+1. Does LLM-generated cyclic adversarial training improve defender robustness
+   compared with a clean defender baseline?
 2. Does rewriting only phishing emails behave differently from rewriting both
    phishing and benign emails?
 
 ## Current Choices
 
-We are using a simple three-model comparison:
+We are using a simple three-model comparison. The defender is currently
+`albert-base-v2`, but the code is arranged so another Hugging Face text
+classifier can be used later.
 
-- **Model A**: clean ALBERT baseline.
-- **Model B**: cyclic ALBERT with LLM rewrites for phishing emails only.
-- **Model C**: cyclic ALBERT with LLM rewrites for both phishing and benign
+- **Model A**: clean defender baseline.
+- **Model B**: cyclic defender with LLM rewrites for phishing emails only.
+- **Model C**: cyclic defender with LLM rewrites for both phishing and benign
   emails.
 
 For Model B/C, the defender keeps learning across rounds:
@@ -142,49 +144,45 @@ python mail_cag.py describe model-c
 Dry-run before spending GPU time:
 
 ```bash
-python mail_cag.py run model-a --dry-run --run-id baseline_smoke_001
-python mail_cag.py run model-b --dry-run --run-id b_smoke_001
-python mail_cag.py run model-c --dry-run --run-id c_smoke_001
+python mail_cag.py run model-a --dry-run --run-id a_smoke_001
+python mail_cag.py run model-b --dry-run --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --dry-run --run-id c_smoke_qwen8b_quality_001
 ```
 
-Run the baseline:
+Run the three smoke tests from the beginning:
 
 ```bash
-python mail_cag.py run model-a --run-id baseline_smoke_001
-```
-
-Run the cyclic models:
-
-```bash
-python mail_cag.py run model-b --run-id b_smoke_001
-python mail_cag.py run model-c --run-id c_smoke_001
+python mail_cag.py run model-a --run-id a_smoke_001
+python mail_cag.py run model-b --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --run-id c_smoke_qwen8b_quality_001
 ```
 
 Resume after interruption:
 
 ```bash
-python mail_cag.py run model-b --resume --run-id b_smoke_001
-python mail_cag.py run model-c --resume --run-id c_smoke_001
+python mail_cag.py run model-a --resume --run-id a_smoke_001
+python mail_cag.py run model-b --resume --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --resume --run-id c_smoke_qwen8b_quality_001
 ```
 
 Evaluate the latest completed round on the clean eval split:
 
 ```bash
-python mail_cag.py evaluate model-a --run-id baseline_smoke_001
-python mail_cag.py evaluate model-b --run-id b_smoke_001
-python mail_cag.py evaluate model-c --run-id c_smoke_001
+python mail_cag.py evaluate model-a --run-id a_smoke_001
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py evaluate model-c --run-id c_smoke_qwen8b_quality_001
 ```
 
 Evaluate a specific round:
 
 ```bash
-python mail_cag.py evaluate model-b --run-id b_smoke_001 --round 1
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001 --round 1
 ```
 
 Each run gets its own folder:
 
 ```text
-runs/model_b_llm_phishing_only/b_smoke_001/
+runs/model_b_llm_phishing_only/b_smoke_qwen8b_quality_001/
 ```
 
 Each round keeps:
@@ -239,6 +237,7 @@ Near-term:
 - Evaluate Model A/B/C with TextFooler, PWWS, and DeepWordBug.
 - Add analysis notebooks that read saved `runs/` outputs.
 - Add better run summaries and metrics CSV files.
+- Compare rewrite-quality summaries between Model B and Model C.
 
 Later:
 
