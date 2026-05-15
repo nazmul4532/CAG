@@ -6,6 +6,9 @@ Thumbs.db
 *~
 .vscode/
 .idea/
+.env
+.env.*
+!.env.example
 
 # Python/Jupyter
 __pycache__/
@@ -27,17 +30,19 @@ ENV/
 .textattack/
 .cache/
 
-# Generated model runs and adversarial outputs
+# Generated experiment workspaces
 albert_adversarial_game_model*/
 albert_adversarial_val_sets*/
 runs/
 outputs/
 checkpoints/
-checkpoint-*/
 wandb/
 mlruns/
 
-# Large model/training artifacts
+# Large model/training artifacts and checkpoint folders
+checkpoint-*/
+**/checkpoint-*/
+**/model/
 *.pt
 *.pth
 *.ckpt
@@ -54,9 +59,7 @@ CEAS_08.csv
 data/raw/
 datasets/
 
-# Generated exports/logs
-*.html
-*.log
+# Scratch files
 *.tmp
 
 # Unrelated local documents

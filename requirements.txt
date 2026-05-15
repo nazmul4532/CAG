@@ -1,0 +1,16 @@
+jupyter
+ipykernel
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+tqdm
+torch
+transformers
+datasets
+accelerate
+evaluate
+huggingface-hub
+sentence-transformers
+textattack
