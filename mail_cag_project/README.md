@@ -16,6 +16,15 @@ reruns, checkpoints, and analysis. This workspace separates those concerns:
 - `docs/`: notes on method, drawbacks, and research decisions.
 - `tests/`: lightweight checks for the reusable code.
 
+## Main Configs
+
+Use these first:
+
+- `configs/cyclic_budgeted.yaml`: main v5 path.
+- `configs/baseline_clean.yaml`: clean ALBERT reference.
+
+The old v4 config is kept under `configs/legacy/` for reference only.
+
 ## Current Legacy Inputs
 
 The workspace references existing local files through `legacy_workspace/`:

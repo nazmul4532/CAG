@@ -10,7 +10,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config",
-        default="mail_cag_project/configs/approach_v5_budgeted.yaml",
+        default="mail_cag_project/configs/cyclic_budgeted.yaml",
         help="Path to an experiment config.",
     )
     args = parser.parse_args()

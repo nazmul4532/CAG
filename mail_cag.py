@@ -10,8 +10,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "mail_cag_project" / "src"
 DEFAULT_CONFIGS = {
     "baseline": PROJECT_ROOT / "mail_cag_project" / "configs" / "baseline_clean.yaml",
-    "v4": PROJECT_ROOT / "mail_cag_project" / "configs" / "approach_v4_cumulative.yaml",
-    "v5": PROJECT_ROOT / "mail_cag_project" / "configs" / "approach_v5_budgeted.yaml",
+    "cyclic": PROJECT_ROOT / "mail_cag_project" / "configs" / "cyclic_budgeted.yaml",
+    "v5": PROJECT_ROOT / "mail_cag_project" / "configs" / "cyclic_budgeted.yaml",
+    "v4-legacy": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "legacy"
+    / "approach_v4_cumulative.yaml",
 }
 
 
@@ -48,8 +53,8 @@ def main() -> None:
     describe_parser.add_argument(
         "config",
         nargs="?",
-        default="v5",
-        help="One of baseline, v4, v5, or a config path. Default: v5.",
+        default="cyclic",
+        help="One of baseline, cyclic, v5, v4-legacy, or a config path. Default: cyclic.",
     )
 
     subparsers.add_parser(

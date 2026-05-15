@@ -10,7 +10,8 @@ rounds.
 - `START_HERE.md`: friendly guide for opening the project tomorrow.
 - `mail_cag.py`: friendly command-line entrypoint.
 - `mail_cag_project/`: clean script-first workspace for the next version of the
-  paper experiments.
+  paper experiments. The main config is
+  `mail_cag_project/configs/cyclic_budgeted.yaml`.
 - `legacy_workspace/`: original notebook-era files and local legacy artifacts.
 - `validation_set_0.csv`: small validation seed tracked in Git.
 - `docs/approaches.md`: notes on the active v4 and v5 experiment designs.
@@ -31,6 +32,12 @@ Start with:
 ```bash
 conda activate nlp_game
 python mail_cag.py describe
+```
+
+That describes the main v5/budgeted cyclic setup. Compare against:
+
+```bash
+python mail_cag.py describe baseline
 ```
 
 From the repository root:

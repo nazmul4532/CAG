@@ -2,9 +2,9 @@ name: approach_v4_cumulative
 description: Cumulative cyclic game that carries previous adversarial examples forward.
 
 data:
-  raw_path: ../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
+  raw_path: ../../../legacy_workspace/artifacts/data/raw/CEAS_08.csv
   sample_frac_per_label: 0.06
-  validation_seed_path: ../../validation_set_0.csv
+  validation_seed_path: ../../../validation_set_0.csv
   random_seed: 42
 
 model:
@@ -37,6 +37,6 @@ evaluation:
   held_out_attackers: []
 
 paths:
-  legacy_output_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4
-  legacy_validation_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v4 copy
+  legacy_output_dir: ../../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4
+  legacy_validation_dir: ../../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v4 copy
   run_root: runs/approach_v4_cumulative

@@ -1,8 +1,9 @@
 # Experiment Approaches
 
-This project currently has two active cyclic adversarial-game variants.
+This project is moving forward with the v5 budgeted cyclic adversarial-game
+variant.
 
-## Approach v4: Cumulative Adversarial Game
+## Legacy Approach v4: Cumulative Adversarial Game
 
 Notebook: `legacy_workspace/notebook_era/approach_v4_cumulative_game.ipynb`
 
@@ -19,10 +20,10 @@ Idea:
   `round_{r-1}_augmented_dataset.csv` back into the next round's training data.
 - Each round grows a cumulative augmented dataset.
 
-Use this when the paper needs the "memory-based" cyclic game where the defender
-keeps prior attacks in its training pool.
+Keep this as historical/reference material. It is not the main implementation
+path now.
 
-## Approach v5: Budgeted Roundwise Game
+## Main Approach v5: Budgeted Roundwise Game
 
 Notebook: `legacy_workspace/notebook_era/approach_v5_budgeted_roundwise_game.ipynb`
 
@@ -43,5 +44,5 @@ Idea:
   blindly accumulating every previous augmented dataset.
 - Checkpoint TextAttack progress per recipe so interrupted attacks can resume.
 
-Use this when the paper needs a cleaner controlled game with explicit budgets
-and less uncontrolled dataset growth.
+Use this as the main project direction. It gives us a cleaner controlled game
+with explicit budgets and less uncontrolled dataset growth.

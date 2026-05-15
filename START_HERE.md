@@ -27,8 +27,7 @@ Other useful checks:
 
 ```bash
 python mail_cag.py describe baseline
-python mail_cag.py describe v4
-python mail_cag.py describe v5
+python mail_cag.py describe cyclic
 ```
 
 ## Mental Model
@@ -37,21 +36,27 @@ Use this map:
 
 ```text
 mail_cag.py                 friendly command to run things
-mail_cag_project/configs/   experiment settings
+mail_cag_project/configs/   experiment settings; use cyclic_budgeted.yaml first
 mail_cag_project/src/       reusable Python code
 mail_cag_project/scripts/   lower-level scripts
 legacy_workspace/           old notebooks, old results, local big files
 ```
 
-## What v4 and v5 Mean
+## The Path Forward
 
-- **v4 / cumulative**: keeps previous adversarial examples and grows the
-  training set across rounds.
-- **v5 / budgeted**: trains each round using fresh clean samples plus the
-  current round's adversarial samples.
+We are moving forward with **v5 / budgeted cyclic training**.
 
-The v5 approach is cleaner for controlled experiments. The v4 approach is still
-important as a comparison because it represents cumulative adversarial memory.
+It trains each round using fresh clean samples plus the current round's
+adversarial samples. This is cleaner for controlled experiments than the v4
+cumulative approach.
+
+The old v4 config still exists at:
+
+```text
+mail_cag_project/configs/legacy/approach_v4_cumulative.yaml
+```
+
+Treat it as reference, not the main path.
 
 ## What We Build Next
 
