@@ -89,8 +89,11 @@ The default Ollama set is chosen for a 16 GB RTX 4060 Ti:
 Override it with:
 
 ```bash
-OLLAMA_MODELS="qwen3:8b gpt-oss:20b" scripts/download_models.sh
+OLLAMA_MODELS="qwen3:14b qwen3:8b dolphin3" scripts/download_models.sh
 ```
+
+`dolphin3` is optional. It can be useful later as a second local rewrite model,
+but keep the first serious run on Qwen so the comparison stays simple.
 
 The default Hugging Face downloads are:
 

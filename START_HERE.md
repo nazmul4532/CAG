@@ -83,3 +83,13 @@ The next missing pieces are:
 
 Keep this rule in mind: notebooks are for thinking and reporting; scripts are
 for experiments we want to trust.
+
+## Model Providers
+
+Use Ollama/Qwen for the first implementation. `qwen3:14b` is the preferred local
+model, with `qwen3:8b` and `qwen3:4b` as smaller fallbacks.
+
+`dolphin3` can be added as an optional local model later. Groq's
+`llama-3.3-70b-versatile` is listed in the provider example for future cloud
+comparisons, but it should not be part of the first run unless we intentionally
+add a cloud-provider experiment.
