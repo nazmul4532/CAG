@@ -58,6 +58,14 @@ Each round keeps its final model in `round_N/model/`. The current round also
 keeps one rolling epoch checkpoint in `round_N/checkpoint_current/`; that folder
 is overwritten after every epoch.
 
+Each run is isolated inside a timestamped run folder. Use `--run-id` when you
+want a memorable name:
+
+```bash
+python mail_cag.py run model-b --run-id smoke_001
+python mail_cag.py run model-b --resume --run-id smoke_001
+```
+
 ## Mental Model
 
 Use this map:

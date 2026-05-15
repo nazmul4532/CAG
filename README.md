@@ -71,6 +71,30 @@ Each completed round keeps its final model under `runs/<experiment>/round_N/mode
 During a round, the latest finished epoch is overwritten at
 `runs/<experiment>/round_N/checkpoint_current/`.
 
+Each run gets its own timestamped folder:
+
+```text
+runs/model_b_llm_phishing_only/2026-05-15_23-10-00/
+```
+
+To name a run:
+
+```bash
+python mail_cag.py run model-b --run-id smoke_001
+```
+
+To resume the latest run:
+
+```bash
+python mail_cag.py run model-b --resume
+```
+
+To resume a specific run:
+
+```bash
+python mail_cag.py run model-b --resume --run-id smoke_001
+```
+
 From the repository root:
 
 ```bash

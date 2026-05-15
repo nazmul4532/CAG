@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
+from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -12,12 +14,18 @@ from mail_cag.llm_rewriter import choose_ollama_model, rewrite_email
 from mail_cag.training import add_true_label_confidence, train_albert
 
 
-def run_config(config_path: str | Path, dry_run: bool = False) -> None:
+def run_config(
+    config_path: str | Path,
+    dry_run: bool = False,
+    run_id: str | None = None,
+    resume: bool = False,
+) -> None:
     """Run one configured experiment."""
 
     config_path = Path(config_path)
     config = load_config(config_path)
-    run_root = resolve_from_config(config_path, config["paths"]["run_root"])
+    experiment_root = resolve_from_config(config_path, config["paths"]["run_root"])
+    run_root = choose_run_root(experiment_root, run_id, resume)
     raw_path = resolve_from_config(config_path, config["data"]["raw_path"])
 
     df = load_ceas_subset(
@@ -29,6 +37,8 @@ def run_config(config_path: str | Path, dry_run: bool = False) -> None:
     train_df, eval_df = split_train_eval(df, int(config["data"].get("random_seed", 42)))
 
     print(f"experiment: {config['name']}")
+    print(f"experiment root: {experiment_root}")
+    print(f"run id: {run_root.name}")
     print(f"run root: {run_root}")
     print(f"train rows: {len(train_df)}")
     print(f"eval rows: {len(eval_df)}", flush=True)
@@ -37,15 +47,16 @@ def run_config(config_path: str | Path, dry_run: bool = False) -> None:
         return
 
     run_root.mkdir(parents=True, exist_ok=True)
+    write_latest_pointer(experiment_root, run_root)
     save_json(run_root / "config_snapshot.json", config)
-    train_df.to_csv(run_root / "clean_train.csv", index=False)
-    eval_df.to_csv(run_root / "clean_eval.csv", index=False)
+    write_csv_if_missing(train_df, run_root / "clean_train.csv")
+    write_csv_if_missing(eval_df, run_root / "clean_eval.csv")
 
     if config["training"]["strategy"] == "clean_only":
-        run_clean_round(config, run_root, train_df, eval_df)
+        run_clean_round(config, run_root, train_df, eval_df, resume=resume)
         return
 
-    run_llm_cyclic_rounds(config, run_root, train_df, eval_df)
+    run_llm_cyclic_rounds(config, run_root, train_df, eval_df, resume=resume)
 
 
 def run_clean_round(
@@ -53,8 +64,12 @@ def run_clean_round(
     run_root: Path,
     train_df: pd.DataFrame,
     eval_df: pd.DataFrame,
+    resume: bool,
 ) -> None:
     round_dir = run_root / "round_1"
+    if resume and round_complete(round_dir):
+        print("round 1 already complete; skipping")
+        return
     round_dir.mkdir(parents=True, exist_ok=True)
     train_df.to_csv(round_dir / "training_data.csv", index=False)
     result = train_one_round(config, round_dir, train_df, eval_df)
@@ -66,14 +81,19 @@ def run_llm_cyclic_rounds(
     run_root: Path,
     clean_train_df: pd.DataFrame,
     eval_df: pd.DataFrame,
+    resume: bool,
 ) -> None:
     rounds = int(config["training"]["rounds"])
-    rewrite_pool = pd.DataFrame(columns=clean_train_df.columns)
+    rewrite_pool = load_existing_rewrites(run_root)
     ollama_model = choose_ollama_model(config)
     print(f"ollama model: {ollama_model}")
 
     for round_number in range(1, rounds + 1):
         round_dir = run_root / f"round_{round_number}"
+        if resume and round_complete(round_dir):
+            print(f"round {round_number} already complete; skipping training")
+            continue
+
         round_dir.mkdir(parents=True, exist_ok=True)
         train_df = pd.concat([clean_train_df, rewrite_pool], ignore_index=True)
         train_df.to_csv(round_dir / "training_data.csv", index=False)
@@ -84,13 +104,18 @@ def run_llm_cyclic_rounds(
         if round_number == rounds:
             continue
 
-        rewrites = generate_round_rewrites(
-            config=config,
-            source_df=clean_train_df,
-            model_dir=result.model_dir,
-            round_dir=round_dir,
-            ollama_model=ollama_model,
-        )
+        rewrites_path = round_dir / "generated_rewrites.csv"
+        if resume and rewrites_path.exists():
+            print(f"round {round_number} rewrites already exist; reusing")
+            rewrites = pd.read_csv(rewrites_path)
+        else:
+            rewrites = generate_round_rewrites(
+                config=config,
+                source_df=clean_train_df,
+                model_dir=result.model_dir,
+                round_dir=round_dir,
+                ollama_model=ollama_model,
+            )
         rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
 
 
@@ -168,3 +193,57 @@ def generate_round_rewrites(
 
 def save_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def choose_run_root(experiment_root: Path, run_id: str | None, resume: bool) -> Path:
+    """Pick an isolated folder for this run."""
+
+    if resume:
+        if run_id:
+            return experiment_root / run_id
+        latest = experiment_root / "latest"
+        if latest.exists():
+            return latest.resolve()
+        raise RuntimeError(
+            f"No latest run found under {experiment_root}. "
+            "Pass `--run-id <id>` or start a new run first."
+        )
+
+    return experiment_root / (run_id or make_run_id())
+
+
+def make_run_id() -> str:
+    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+def write_latest_pointer(experiment_root: Path, run_root: Path) -> None:
+    """Point experiment_root/latest at the newest run when symlinks are available."""
+
+    latest = experiment_root / "latest"
+    if latest.exists() or latest.is_symlink():
+        if latest.is_dir() and not latest.is_symlink():
+            shutil.rmtree(latest)
+        else:
+            latest.unlink()
+    try:
+        latest.symlink_to(run_root, target_is_directory=True)
+    except OSError:
+        latest.write_text(str(run_root), encoding="utf-8")
+
+
+def write_csv_if_missing(df: pd.DataFrame, path: Path) -> None:
+    if not path.exists():
+        df.to_csv(path, index=False)
+
+
+def round_complete(round_dir: Path) -> bool:
+    return (round_dir / "model" / "model.safetensors").exists()
+
+
+def load_existing_rewrites(run_root: Path) -> pd.DataFrame:
+    parts = []
+    for path in sorted(run_root.glob("round_*/generated_rewrites.csv")):
+        parts.append(pd.read_csv(path))
+    if not parts:
+        return pd.DataFrame()
+    return pd.concat(parts, ignore_index=True)

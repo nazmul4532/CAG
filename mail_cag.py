@@ -64,12 +64,22 @@ def describe(config_name: str) -> None:
     describe_config(resolve_config(config_name))
 
 
-def run(config_name: str, dry_run: bool) -> None:
+def run(
+    config_name: str,
+    dry_run: bool,
+    run_id: str | None,
+    resume: bool,
+) -> None:
     ensure_import_path()
 
     from mail_cag.run import run_config
 
-    run_config(resolve_config(config_name), dry_run=dry_run)
+    run_config(
+        resolve_config(config_name),
+        dry_run=dry_run,
+        run_id=run_id,
+        resume=resume,
+    )
 
 
 def main() -> None:
@@ -111,6 +121,15 @@ def main() -> None:
         action="store_true",
         help="Load the config and data split, then stop before training or LLM calls.",
     )
+    run_parser.add_argument(
+        "--run-id",
+        help="Name this run folder, or choose which run to resume.",
+    )
+    run_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume a run by skipping completed rounds and reusing saved rewrites.",
+    )
     subparsers.add_parser(
         "evaluate",
         help="Planned next step: evaluate a trained experiment.",
@@ -123,7 +142,12 @@ def main() -> None:
         return
 
     if args.command == "run":
-        run(args.config, dry_run=args.dry_run)
+        run(
+            args.config,
+            dry_run=args.dry_run,
+            run_id=args.run_id,
+            resume=args.resume,
+        )
         return
 
     if args.command == "evaluate":
