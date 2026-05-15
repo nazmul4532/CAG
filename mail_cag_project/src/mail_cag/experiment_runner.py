@@ -6,7 +6,6 @@ from typing import Any
 
 import pandas as pd
 from tqdm.auto import tqdm
-from transformers import AutoTokenizer
 
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
@@ -19,7 +18,11 @@ from mail_cag.run_storage import (
     round_complete,
     write_latest_pointer,
 )
-from mail_cag.training import add_true_label_confidence, train_transformer_classifier
+from mail_cag.training import (
+    add_true_label_confidence,
+    load_tokenizer,
+    train_transformer_classifier,
+)
 
 
 def run_config(
@@ -179,25 +182,27 @@ def generate_round_rewrites(
     target_labels = {int(label) for label in attacks["target_labels"]}
     max_examples = int(attacks["max_examples_per_round"])
     candidates = int(attacks["candidates_per_email"])
-    tokenizer = AutoTokenizer.from_pretrained(
-        config["model"]["base_model"],
-        local_files_only=True,
-    )
+    max_length = int(config["model"]["max_length"])
+    eval_batch_size = int(config["training"]["eval_batch_size"])
+    tokenizer = load_tokenizer(config["model"]["base_model"])
 
-    candidates_df = source_df[source_df["label"].isin(target_labels)].copy()
-    scored = add_true_label_confidence(
-        df=candidates_df,
+    selected = select_rewrite_sources(
+        source_df=source_df,
+        target_labels=target_labels,
         model_dir=model_dir,
-        max_length=int(config["model"]["max_length"]),
-        batch_size=int(config["training"]["eval_batch_size"]),
+        max_examples=max_examples,
+        max_length=max_length,
+        batch_size=eval_batch_size,
     )
-    selected = scored.sort_values("true_label_confidence").head(max_examples)
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
     output_path = round_dir / "generated_rewrites.csv"
     rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
+    temperature = float(llm.get("temperature", 0.6))
+    top_p = float(llm.get("top_p", 0.9))
+
     print(f"selected emails to rewrite: {len(selected)}", flush=True)
     progress = tqdm(
         selected.iterrows(),
@@ -208,11 +213,11 @@ def generate_round_rewrites(
         visible_text = visible_defender_text(
             text=str(row["text"]),
             tokenizer=tokenizer,
-            max_length=int(config["model"]["max_length"]),
+            max_length=max_length,
         )
-        temperature = float(llm.get("temperature", 0.6))
-        top_p = float(llm.get("top_p", 0.9))
-        cache_key = rewrite_cache_key(
+        rewrites, from_cache = get_or_create_rewrites(
+            cache=rewrite_cache,
+            llm=llm,
             model=ollama_model,
             label=int(row["label"]),
             text=visible_text,
@@ -220,36 +225,16 @@ def generate_round_rewrites(
             temperature=temperature,
             top_p=top_p,
         )
-        rewrites = rewrite_cache.get(cache_key)
-        if rewrites is None:
-            rewrites = rewrite_email(
-                base_url=llm.get("base_url", "http://127.0.0.1:11434"),
-                model=ollama_model,
-                label=int(row["label"]),
-                text=visible_text,
-                candidates=candidates,
-                temperature=temperature,
-                top_p=top_p,
-            )
-            rewrite_cache.put(cache_key, rewrites)
-        else:
+        if from_cache:
             progress.write("cache hit")
 
-        for rewrite in rewrites:
-            item = row.to_dict()
-            item["source_text"] = item["text"]
-            item["source_true_label_confidence"] = item["true_label_confidence"]
-            item["text"] = rewrite
-            item["subject"] = ""
-            item["body"] = rewrite
-            item["generated_by"] = ollama_model
-            rows.append(item)
+        rows.extend(make_rewrite_rows(row, rewrites, ollama_model))
         if len(rows) % save_every == 0:
-            pd.DataFrame(rows).to_csv(output_path, index=False)
+            write_rewrites(output_path, rows)
             progress.write(f"saved rewrites: {len(rows)}")
         progress.set_postfix(generated=len(rows))
 
-    pd.DataFrame(rows).to_csv(output_path, index=False)
+    write_rewrites(output_path, rows)
     print(f"saved rewrites: {len(rows)}")
     print(f"round rewrites: {len(rows)}")
     rewrites_df = pd.DataFrame(rows)
@@ -257,11 +242,90 @@ def generate_round_rewrites(
         rewrites_df=rewrites_df,
         model_dir=model_dir,
         round_dir=round_dir,
-        max_length=int(config["model"]["max_length"]),
-        batch_size=int(config["training"]["eval_batch_size"]),
+        max_length=max_length,
+        batch_size=eval_batch_size,
     )
     print(f"rewrite quality: {round_dir / 'rewrite_quality_summary.json'}")
     return rewrites_df
+
+
+def select_rewrite_sources(
+    *,
+    source_df: pd.DataFrame,
+    target_labels: set[int],
+    model_dir: Path,
+    max_examples: int,
+    max_length: int,
+    batch_size: int,
+) -> pd.DataFrame:
+    """Pick the examples the current defender is least confident about."""
+
+    candidates = source_df[source_df["label"].isin(target_labels)].copy()
+    scored = add_true_label_confidence(
+        df=candidates,
+        model_dir=model_dir,
+        max_length=max_length,
+        batch_size=batch_size,
+    )
+    return scored.sort_values("true_label_confidence").head(max_examples)
+
+
+def get_or_create_rewrites(
+    *,
+    cache: RewriteCache,
+    llm: dict[str, Any],
+    model: str,
+    label: int,
+    text: str,
+    candidates: int,
+    temperature: float,
+    top_p: float,
+) -> tuple[list[str], bool]:
+    cache_key = rewrite_cache_key(
+        model=model,
+        label=label,
+        text=text,
+        candidates=candidates,
+        temperature=temperature,
+        top_p=top_p,
+    )
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached, True
+
+    rewrites = rewrite_email(
+        base_url=llm.get("base_url", "http://127.0.0.1:11434"),
+        model=model,
+        label=label,
+        text=text,
+        candidates=candidates,
+        temperature=temperature,
+        top_p=top_p,
+    )
+    cache.put(cache_key, rewrites)
+    return rewrites, False
+
+
+def make_rewrite_rows(
+    row: pd.Series,
+    rewrites: list[str],
+    generated_by: str,
+) -> list[dict[str, Any]]:
+    rows = []
+    for rewrite in rewrites:
+        item = row.to_dict()
+        item["source_text"] = item["text"]
+        item["source_true_label_confidence"] = item["true_label_confidence"]
+        item["text"] = rewrite
+        item["subject"] = ""
+        item["body"] = rewrite
+        item["generated_by"] = generated_by
+        rows.append(item)
+    return rows
+
+
+def write_rewrites(path: Path, rows: list[dict[str, Any]]) -> None:
+    pd.DataFrame(rows).to_csv(path, index=False)
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:

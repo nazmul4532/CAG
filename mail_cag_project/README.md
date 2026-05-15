@@ -1,8 +1,8 @@
 # Mail-CAG Project Workspace
 
-This folder is the clean, script-first workspace for the cyclic adversarial game
-paper. The original notebooks and outputs live under `../legacy_workspace/`.
-This gives us a safer place to rebuild the experiment logic step by step.
+This folder is the script-first workspace for the cyclic adversarial game paper.
+The original notebooks and outputs live under `../legacy_workspace/`. This
+workspace keeps the current experiment logic easier to run, resume, and explain.
 
 ## Why This Exists
 
@@ -20,7 +20,7 @@ reruns, checkpoints, and analysis. This workspace separates those concerns:
 
 Use these first:
 
-- `configs/baseline_clean.yaml`: Model A, clean ALBERT reference.
+- `configs/baseline_clean.yaml`: Model A, clean defender reference.
 - `configs/cyclic_llm_phishing_only.yaml`: Model B, LLM rewrites phishing only.
 - `configs/cyclic_llm_both_labels.yaml`: Model C, LLM rewrites both labels.
 - `configs/providers.example.yaml`: provider slots for Ollama now and
@@ -33,13 +33,19 @@ reference only.
 
 ## Current Legacy Inputs
 
-The workspace references existing local files through `legacy_workspace/`:
+The raw CEAS file still comes from the legacy workspace:
 
 - raw data: `../legacy_workspace/artifacts/data/raw/CEAS_08.csv`
-- v5 outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5`
-- v5 debug outputs: `../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy`
 
-Those local data/output folders are intentionally ignored by Git.
+Prepare the current English/token-capped dataset from the repository root:
+
+```bash
+python scripts/prepare_ceas.py
+python scripts/describe_prepared_data.py
+```
+
+That writes `../data/processed/CEAS_08_en_1600.csv` and matching stats files.
+Local data/output folders are intentionally ignored by Git.
 
 ## Environment
 
@@ -62,22 +68,28 @@ python -m pip install -e mail_cag_project
 python mail_cag_project/scripts/describe_setup.py
 ```
 
-The friendly root command can now dry-run or start training:
+The friendly root command can dry-run, train, resume, and evaluate:
 
 ```bash
-python mail_cag.py run model-a --dry-run --run-id baseline_smoke_001
-python mail_cag.py run model-a --run-id baseline_smoke_001
-python mail_cag.py run model-b --run-id b_smoke_001
-python mail_cag.py run model-b --resume --run-id b_smoke_001
-python mail_cag.py evaluate model-b --run-id b_smoke_001
+python mail_cag.py run model-a --dry-run --run-id a_smoke_001
+python mail_cag.py run model-b --dry-run --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --dry-run --run-id c_smoke_qwen8b_quality_001
+
+python mail_cag.py run model-a --run-id a_smoke_001
+python mail_cag.py run model-b --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run model-c --run-id c_smoke_qwen8b_quality_001
+
+python mail_cag.py run model-b --resume --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
 ```
 
 Training outputs are written to `../runs/`. Model B/C carry defender weights
-forward across rounds, so round 2 starts from `round_1/model`.
+forward across rounds, so round 2 starts from `round_1/model`. LLM rewrites are
+cached in each run folder as `rewrite_cache.csv`.
 
 ## Experiment Terms
 
-Clean baseline means: train ALBERT on the same clean CEAS train split, with no
+Clean baseline means: train the defender on the same clean CEAS train split, with no
 adversarial examples added. It is not a different dataset. It is the reference
 model we compare the cyclic methods against.
 

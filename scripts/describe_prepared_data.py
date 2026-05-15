@@ -25,6 +25,7 @@ SCRIPT_PATTERNS = {
     "japanese": r"[\u3040-\u30ff]",
     "hangul": r"[\uac00-\ud7af]",
 }
+TOKEN_COVERAGE_CUTOFFS = [128, 256, 384, 512, 1024, 1600]
 
 
 def main() -> None:
@@ -76,7 +77,7 @@ def build_stats(
             "language": "en",
             "blocked_scripts": list(SCRIPT_PATTERNS),
             "tokenizer": tokenizer_name,
-            "max_token_length": 1600,
+            "observed_max_token_length": int(token_lengths.max()),
         },
         "rows": len(df),
         "columns": list(df.columns),
@@ -101,7 +102,7 @@ def token_stats(lengths: pd.Series) -> dict:
     }
     stats["coverage_percent"] = {
         str(cutoff): round(float((lengths <= cutoff).mean() * 100), 2)
-        for cutoff in [128, 256, 384, 512, 1024, 1600]
+        for cutoff in TOKEN_COVERAGE_CUTOFFS
     }
     return stats
 
@@ -189,7 +190,7 @@ def render_markdown(stats: dict) -> str:
         f"- Language: {stats['preparation']['language']}",
         f"- Blocked scripts: {', '.join(stats['preparation']['blocked_scripts'])}",
         f"- Tokenizer: {stats['preparation']['tokenizer']}",
-        f"- Max token length: {stats['preparation']['max_token_length']}",
+        f"- Observed max token length: {stats['preparation']['observed_max_token_length']}",
         "",
         "## Token Lengths",
         "",

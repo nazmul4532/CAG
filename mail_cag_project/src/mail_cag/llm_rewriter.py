@@ -6,6 +6,7 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+
 def choose_ollama_model(config: dict[str, Any]) -> str:
     """Return the first configured Ollama model that is installed locally."""
 
