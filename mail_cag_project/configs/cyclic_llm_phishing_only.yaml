@@ -54,4 +54,4 @@ evaluation:
   llm_held_out: true
 
 paths:
-  run_root: runs/model_b_llm_phishing_only
+  run_root: ../../runs/model_b_llm_phishing_only

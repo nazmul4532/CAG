@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 def load_ceas_subset(
@@ -33,3 +34,29 @@ def describe_labels(df: pd.DataFrame) -> dict[int, int]:
 
     counts = df["label"].value_counts().sort_index()
     return {int(label): int(count) for label, count in counts.items()}
+
+
+def add_email_text(df: pd.DataFrame) -> pd.DataFrame:
+    """Create one text field from the useful CEAS email columns."""
+
+    result = df.copy()
+    subject = result["subject"].fillna("").astype(str)
+    body = result["body"].fillna("").astype(str)
+    result["text"] = ("Subject: " + subject + "\n\n" + body).str.strip()
+    return result
+
+
+def split_train_eval(
+    df: pd.DataFrame,
+    random_seed: int,
+    eval_size: float = 0.2,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Make a stable stratified train/eval split."""
+
+    train_df, eval_df = train_test_split(
+        df,
+        test_size=eval_size,
+        random_state=random_seed,
+        stratify=df["label"],
+    )
+    return train_df.reset_index(drop=True), eval_df.reset_index(drop=True)

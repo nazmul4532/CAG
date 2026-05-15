@@ -62,6 +62,17 @@ python -m pip install -e mail_cag_project
 python mail_cag_project/scripts/describe_setup.py
 ```
 
+The friendly root command can now dry-run or start training:
+
+```bash
+python mail_cag.py run model-a --dry-run
+python mail_cag.py run model-a
+python mail_cag.py run model-b
+python mail_cag.py run model-c
+```
+
+Training outputs are written to `../runs/`.
+
 ## Experiment Terms
 
 Clean baseline means: train ALBERT on the same clean CEAS train split, with no

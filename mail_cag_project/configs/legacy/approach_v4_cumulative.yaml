@@ -39,4 +39,4 @@ evaluation:
 paths:
   legacy_output_dir: ../../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v4
   legacy_validation_dir: ../../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v4 copy
-  run_root: runs/approach_v4_cumulative
+  run_root: ../../../runs/approach_v4_cumulative

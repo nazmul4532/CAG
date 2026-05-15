@@ -45,6 +45,28 @@ python mail_cag.py describe model-b
 python mail_cag.py describe model-c
 ```
 
+Dry-run a training config before spending GPU time:
+
+```bash
+python mail_cag.py run model-a --dry-run
+python mail_cag.py run model-b --dry-run
+python mail_cag.py run model-c --dry-run
+```
+
+Run the clean baseline:
+
+```bash
+python mail_cag.py run model-a
+```
+
+Run one LLM cyclic model:
+
+```bash
+python mail_cag.py run model-b
+# or
+python mail_cag.py run model-c
+```
+
 From the repository root:
 
 ```bash

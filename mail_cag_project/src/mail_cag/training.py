@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, Dataset
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+
+@dataclass
+class TrainResult:
+    model_dir: Path
+    eval_accuracy: float
+
+
+class EmailDataset(Dataset):
+    def __init__(self, df: pd.DataFrame, tokenizer, max_length: int) -> None:
+        self.texts = df["text"].astype(str).tolist()
+        self.labels = df["label"].astype(int).tolist()
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self) -> int:
+        return len(self.labels)
+
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
+        encoded = self.tokenizer(
+            self.texts[index],
+            truncation=True,
+            padding="max_length",
+            max_length=self.max_length,
+            return_tensors="pt",
+        )
+        item = {key: value.squeeze(0) for key, value in encoded.items()}
+        item["labels"] = torch.tensor(self.labels[index], dtype=torch.long)
+        return item
+
+
+def train_albert(
+    *,
+    train_df: pd.DataFrame,
+    eval_df: pd.DataFrame,
+    model_name: str,
+    output_dir: Path,
+    max_length: int,
+    learning_rate: float,
+    epochs: int,
+    train_batch_size: int,
+    eval_batch_size: int,
+    num_labels: int,
+) -> TrainResult:
+    """Fine-tune one ALBERT classifier and save it."""
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_name,
+        num_labels=num_labels,
+    ).to(device)
+
+    train_loader = DataLoader(
+        EmailDataset(train_df, tokenizer, max_length),
+        batch_size=train_batch_size,
+        shuffle=True,
+    )
+    eval_loader = DataLoader(
+        EmailDataset(eval_df, tokenizer, max_length),
+        batch_size=eval_batch_size,
+    )
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    model.train()
+    for epoch in range(1, epochs + 1):
+        running_loss = 0.0
+        for batch in train_loader:
+            batch = {key: value.to(device) for key, value in batch.items()}
+            loss = model(**batch).loss
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            running_loss += float(loss.item())
+        average_loss = running_loss / max(len(train_loader), 1)
+        print(f"epoch {epoch}/{epochs} loss: {average_loss:.4f}", flush=True)
+
+    accuracy = evaluate_accuracy(model, eval_loader, device)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+    return TrainResult(model_dir=output_dir, eval_accuracy=accuracy)
+
+
+def evaluate_accuracy(model, loader: DataLoader, device: torch.device) -> float:
+    correct = 0
+    total = 0
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            labels = batch.pop("labels").to(device)
+            batch = {key: value.to(device) for key, value in batch.items()}
+            predictions = model(**batch).logits.argmax(dim=1)
+            correct += int((predictions == labels).sum().item())
+            total += int(labels.numel())
+    return correct / total if total else 0.0
+
+
+def add_true_label_confidence(
+    *,
+    df: pd.DataFrame,
+    model_dir: Path,
+    max_length: int,
+    batch_size: int,
+) -> pd.DataFrame:
+    """Score each row by the model confidence for its true label."""
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(device)
+    loader = DataLoader(EmailDataset(df, tokenizer, max_length), batch_size=batch_size)
+
+    scores: list[float] = []
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            labels = batch.pop("labels").to(device)
+            batch = {key: value.to(device) for key, value in batch.items()}
+            probs = model(**batch).logits.softmax(dim=1)
+            scores.extend(probs[torch.arange(len(labels)), labels].cpu().tolist())
+
+    result = df.copy()
+    result["true_label_confidence"] = scores
+    return result

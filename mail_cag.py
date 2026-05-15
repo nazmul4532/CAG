@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "mail_cag_project" / "src"
@@ -60,6 +64,14 @@ def describe(config_name: str) -> None:
     describe_config(resolve_config(config_name))
 
 
+def run(config_name: str, dry_run: bool) -> None:
+    ensure_import_path()
+
+    from mail_cag.run import run_config
+
+    run_config(resolve_config(config_name), dry_run=dry_run)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Friendly entrypoint for the Mail-CAG project."
@@ -81,9 +93,23 @@ def main() -> None:
         ),
     )
 
-    subparsers.add_parser(
+    run_parser = subparsers.add_parser(
         "run",
-        help="Planned next step: run a configured experiment.",
+        help="Run a configured experiment.",
+    )
+    run_parser.add_argument(
+        "config",
+        nargs="?",
+        default="cyclic",
+        help=(
+            "One of baseline/model-a, model-b/phishing-only, "
+            "model-c/both-labels, cyclic, v5, or a config path. Default: cyclic."
+        ),
+    )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Load the config and data split, then stop before training or LLM calls.",
     )
     subparsers.add_parser(
         "evaluate",
@@ -96,9 +122,13 @@ def main() -> None:
         describe(args.config)
         return
 
-    if args.command in {"run", "evaluate"}:
+    if args.command == "run":
+        run(args.config, dry_run=args.dry_run)
+        return
+
+    if args.command == "evaluate":
         print(
-            f"`python mail_cag.py {args.command}` is not implemented yet. "
+            "`python mail_cag.py evaluate` is not implemented yet. "
             "Next we will build this around the config files."
         )
         return

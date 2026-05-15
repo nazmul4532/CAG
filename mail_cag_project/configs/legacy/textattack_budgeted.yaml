@@ -42,4 +42,4 @@ paths:
   legacy_output_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5
   legacy_debug_output_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_game_model_v5dummy
   legacy_debug_validation_dir: ../../legacy_workspace/artifacts/outputs/experiments/albert_adversarial_val_sets_v5dummy
-  run_root: runs/approach_v5_budgeted
+  run_root: ../../../runs/approach_v5_budgeted

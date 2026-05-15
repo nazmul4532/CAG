@@ -31,6 +31,30 @@ python mail_cag.py describe model-b
 python mail_cag.py describe model-c
 ```
 
+Before starting a real training run, check the selected config:
+
+```bash
+python mail_cag.py run model-a --dry-run
+python mail_cag.py run model-b --dry-run
+python mail_cag.py run model-c --dry-run
+```
+
+Start the clean baseline first:
+
+```bash
+python mail_cag.py run model-a
+```
+
+Then run one cyclic model:
+
+```bash
+python mail_cag.py run model-b
+# or
+python mail_cag.py run model-c
+```
+
+Outputs go under `runs/`, which is intentionally ignored by Git.
+
 ## Mental Model
 
 Use this map:
@@ -76,7 +100,7 @@ Treat it as reference, not the main path.
 
 The next missing pieces are:
 
-1. `python mail_cag.py run`
+1. Improve/inspect the first `python mail_cag.py run` outputs.
 2. `python mail_cag.py evaluate`
 3. notebooks that only analyze saved results, not contain the whole experiment
    engine

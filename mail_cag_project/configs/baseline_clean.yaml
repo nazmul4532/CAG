@@ -32,4 +32,4 @@ evaluation:
     - deepwordbug
 
 paths:
-  run_root: runs/baseline_clean_albert
+  run_root: ../../runs/baseline_clean_albert
