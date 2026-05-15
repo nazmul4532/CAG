@@ -107,6 +107,12 @@ That writes:
 data/processed/CEAS_08_en_1600.csv
 ```
 
+Describe the prepared dataset:
+
+```bash
+python scripts/describe_prepared_data.py
+```
+
 ## Running Experiments
 
 Check the configs without training:
