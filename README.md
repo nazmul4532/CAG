@@ -7,6 +7,8 @@ rounds.
 
 ## Repository Layout
 
+- `START_HERE.md`: friendly guide for opening the project tomorrow.
+- `mail_cag.py`: friendly command-line entrypoint.
 - `mail_cag_project/`: clean script-first workspace for the next version of the
   paper experiments.
 - `legacy_workspace/`: original notebook-era files and local legacy artifacts.
@@ -23,6 +25,13 @@ symlinks now live under `legacy_workspace/root_links/`. The actual local data an
 outputs live under `legacy_workspace/artifacts/`.
 
 ## Bootstrap
+
+Start with:
+
+```bash
+conda activate nlp_game
+python mail_cag.py describe
+```
 
 From the repository root:
 

@@ -10,6 +10,13 @@ def load_ceas_subset(
     sample_frac_per_label: float,
     random_seed: int = 42,
 ) -> pd.DataFrame:
+    """Load the same percentage from each CEAS label.
+
+    The old notebooks used a percentage of CEAS rather than the whole dataset.
+    Keeping that choice in one helper makes baseline/v4/v5 comparisons fairer:
+    each config can say exactly which fraction it used.
+    """
+
     df = pd.read_csv(raw_path)
     parts = []
     for label in sorted(df["label"].dropna().unique()):
@@ -22,5 +29,7 @@ def load_ceas_subset(
 
 
 def describe_labels(df: pd.DataFrame) -> dict[int, int]:
+    """Return label counts in a compact, print-friendly form."""
+
     counts = df["label"].value_counts().sort_index()
     return {int(label): int(count) for label, count in counts.items()}
