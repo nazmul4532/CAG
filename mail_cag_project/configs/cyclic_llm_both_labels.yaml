@@ -32,7 +32,7 @@ attacks:
   target_labels:
     - 0
     - 1
-  candidates_per_email: 3
+  candidates_per_email: 1
   max_examples_per_round: 200
   selection_rule: lowest_true_label_confidence
 

@@ -96,7 +96,7 @@ runs/model_b_llm_phishing_only/b_smoke_001/
 - Defender: `albert-base-v2`.
 - Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.
-- Between-round rewrite budget: 200 selected emails, 3 candidates each.
+- Between-round rewrite budget: 200 selected emails, 1 candidate each.
 
 If rewriting is too slow, reduce the Model B/C config:
 

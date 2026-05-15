@@ -159,8 +159,7 @@ round_N/generated_rewrites.csv
 During LLM rewriting, progress should print as:
 
 ```text
-rewritten emails: 1/200
-rewritten emails: 2/200
+rewriting emails:  12%|████▌              | 24/200
 ```
 
 ## Current Slow Part
@@ -169,7 +168,7 @@ Between rounds, Model B/C asks Qwen to rewrite selected emails. Current smoke
 settings can still request up to:
 
 ```text
-200 selected emails x 3 candidates = 600 rewrites per between-round step
+200 selected emails x 1 candidate = 200 rewrites per between-round step
 ```
 
 If this is too slow, reduce these in the Model B/C config:
