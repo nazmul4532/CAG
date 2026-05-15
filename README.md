@@ -1,186 +1,195 @@
 # Mail-CAG
 
-Mail-CAG is a cyclic adversarial game for robust email threat detection. The
-current experiments train an ALBERT-based classifier, generate adversarial email
-variants, fold successful attacks back into training, and repeat the loop across
-rounds.
+Mail-CAG is a cyclic adversarial game for robust phishing-email detection.
+
+The current project asks:
+
+1. Does LLM-generated cyclic adversarial training improve ALBERT robustness
+   compared with clean ALBERT?
+2. Does rewriting only phishing emails behave differently from rewriting both
+   phishing and benign emails?
+
+## Current Choices
+
+We are using a simple three-model comparison:
+
+- **Model A**: clean ALBERT baseline.
+- **Model B**: cyclic ALBERT with LLM rewrites for phishing emails only.
+- **Model C**: cyclic ALBERT with LLM rewrites for both phishing and benign
+  emails.
+
+For Model B/C, the defender keeps learning across rounds:
+
+```text
+round 1 starts from albert-base-v2
+round 2 starts from round_1/model
+round 3 starts from round_2/model
+```
+
+The attacker for the first implementation is local Ollama with `qwen3:14b`.
+`qwen3:8b` and `qwen3:4b` are fallbacks. TextFooler, PWWS, and DeepWordBug are
+kept for later held-out evaluation, not training-data generation.
+
+The configs currently use 6% of CEAS for smoke testing:
+
+```yaml
+sample_frac_per_label: 0.06
+```
+
+Move this toward `1.0` only after the pipeline is behaving.
 
 ## Repository Layout
 
-- `START_HERE.md`: friendly guide for opening the project tomorrow.
 - `mail_cag.py`: friendly command-line entrypoint.
-- `mail_cag_project/`: clean script-first workspace for the next version of the
-  paper experiments. The main config is
-  `mail_cag_project/configs/cyclic_llm_both_labels.yaml`.
-- `legacy_workspace/`: original notebook-era files and local legacy artifacts.
-- `validation_set_0.csv`: small validation seed tracked in Git.
-- `docs/approaches.md`: notes on the current Model A/B/C experiment design and
-  older v4/v5 references.
-- `mail_cag_project/docs/literature_scan.md`: quick notes on nearby LLM
-  phishing/adversarial-training work.
-- `scripts/bootstrap.sh`: creates the Python environment and installs packages.
-- `scripts/download_models.sh`: pulls local Ollama models and Hugging Face base models.
+- `START_HERE.md`: short guide for getting oriented.
+- `mail_cag_project/configs/`: Model A/B/C experiment configs.
+- `mail_cag_project/src/mail_cag/`: reusable Python code.
+- `mail_cag_project/docs/literature_scan.md`: quick related-work notes.
+- `docs/approaches.md`: method notes and legacy v4/v5 references.
+- `legacy_workspace/`: old notebooks, old outputs, and local artifacts.
+- `scripts/bootstrap.sh`: creates/updates the Python environment.
+- `scripts/download_models.sh`: downloads Ollama and Hugging Face models.
 
-Large raw datasets, local caches, trained checkpoints, and generated experiment
-folders are intentionally ignored by Git.
+Large datasets, checkpoints, caches, and generated runs are ignored by Git.
 
-The old root-level `CEAS_08.csv` and `albert_adversarial_*` compatibility
-symlinks now live under `legacy_workspace/root_links/`. The actual local data and
-outputs live under `legacy_workspace/artifacts/`.
-
-## Bootstrap
-
-Start with:
-
-```bash
-conda activate nlp_game
-python mail_cag.py describe
-```
-
-That describes the main Model C / both-label LLM cyclic setup. Compare against:
-
-```bash
-python mail_cag.py describe baseline
-python mail_cag.py describe model-b
-python mail_cag.py describe model-c
-```
-
-Dry-run a training config before spending GPU time:
-
-```bash
-python mail_cag.py run model-a --dry-run
-python mail_cag.py run model-b --dry-run
-python mail_cag.py run model-c --dry-run
-```
-
-Run the clean baseline:
-
-```bash
-python mail_cag.py run model-a
-```
-
-Run one LLM cyclic model:
-
-```bash
-python mail_cag.py run model-b
-# or
-python mail_cag.py run model-c
-```
-
-Each completed round keeps its final model under `runs/<experiment>/round_N/model/`.
-During a round, the latest finished epoch is overwritten at
-`runs/<experiment>/round_N/checkpoint_current/`.
-For cyclic Model B/C runs, round 2 starts from `round_1/model`, round 3 starts
-from `round_2/model`, and so on.
-
-Each run gets its own timestamped folder:
-
-```text
-runs/model_b_llm_phishing_only/2026-05-15_23-10-00/
-```
-
-To name a run:
-
-```bash
-python mail_cag.py run model-b --run-id smoke_001
-```
-
-To resume the latest run:
-
-```bash
-python mail_cag.py run model-b --resume
-```
-
-To resume a specific run:
-
-```bash
-python mail_cag.py run model-b --resume --run-id smoke_001
-```
+## Setup
 
 From the repository root:
 
 ```bash
+cd ~/Documents/NLP
+conda activate nlp_game
+git pull
+```
+
+If the environment needs to be rebuilt:
+
+```bash
 scripts/bootstrap.sh
-```
-
-By default this creates or updates the original conda environment named
-`nlp_game` with Python 3.12.
-Override the defaults when needed:
-
-```bash
-ENV_NAME=mail-cag-dev PYTHON_VERSION=3.12 scripts/bootstrap.sh
-```
-
-Activate the environment:
-
-```bash
 conda activate nlp_game
 ```
-
-## Download Models
 
 Make sure Ollama is running:
 
 ```bash
 systemctl status ollama
+ollama list
 ```
 
-Then pull the default local LLMs and Hugging Face models:
+Pull the recommended local models if needed:
 
 ```bash
-scripts/download_models.sh
+OLLAMA_MODELS="qwen3:14b qwen3:8b" scripts/download_models.sh
 ```
 
-The default Ollama set is chosen for a 16 GB RTX 4060 Ti:
-
-- `qwen3:8b`
-- `qwen3:14b`
-- `gemma3:12b-it-qat`
-- `mistral-nemo:12b`
-
-Override it with:
-
-```bash
-OLLAMA_MODELS="qwen3:14b qwen3:8b dolphin3" scripts/download_models.sh
-```
-
-`dolphin3` is optional. It can be useful later as a second local rewrite model,
-but keep the first serious run on Qwen so the comparison stays simple.
-
-The default Hugging Face downloads are:
-
-- `albert-base-v2`
-- `sentence-transformers/all-MiniLM-L6-v2`
-
-Override them with:
-
-```bash
-HF_MODELS="albert-base-v2" scripts/download_models.sh
-```
-
-## Data
-
-Place the raw CEAS dataset at:
+The raw CEAS file should be here:
 
 ```text
 legacy_workspace/artifacts/data/raw/CEAS_08.csv
 ```
 
-That file is intentionally ignored because it is large/raw data. If we later want
-reproducible dataset versioning, use DVC or Git LFS instead of regular Git.
+## Running Experiments
+
+Check the configs without training:
+
+```bash
+python mail_cag.py describe model-a
+python mail_cag.py describe model-b
+python mail_cag.py describe model-c
+```
+
+Dry-run before spending GPU time:
+
+```bash
+python mail_cag.py run model-a --dry-run --run-id baseline_smoke_001
+python mail_cag.py run model-b --dry-run --run-id b_smoke_001
+python mail_cag.py run model-c --dry-run --run-id c_smoke_001
+```
+
+Run the baseline:
+
+```bash
+python mail_cag.py run model-a --run-id baseline_smoke_001
+```
+
+Run the cyclic models:
+
+```bash
+python mail_cag.py run model-b --run-id b_smoke_001
+python mail_cag.py run model-c --run-id c_smoke_001
+```
+
+Resume after interruption:
+
+```bash
+python mail_cag.py run model-b --resume --run-id b_smoke_001
+python mail_cag.py run model-c --resume --run-id c_smoke_001
+```
+
+Each run gets its own folder:
+
+```text
+runs/model_b_llm_phishing_only/b_smoke_001/
+```
+
+Each round keeps:
+
+```text
+round_N/model/               final model for the round
+round_N/checkpoint_current/  latest epoch checkpoint, overwritten each epoch
+round_N/training_data.csv    data used for that round
+round_N/generated_rewrites.csv
+```
+
+During LLM rewriting, progress should print as:
+
+```text
+rewritten emails: 1/200
+rewritten emails: 2/200
+```
+
+## Current Slow Part
+
+Between rounds, Model B/C asks Qwen to rewrite selected emails. Current smoke
+settings can still request up to:
+
+```text
+200 selected emails x 3 candidates = 600 rewrites per between-round step
+```
+
+If this is too slow, reduce these in the Model B/C config:
+
+```yaml
+attacks:
+  candidates_per_email: 1
+  max_examples_per_round: 25
+```
+
+## Future Choices
+
+Near-term:
+
+- Add `python mail_cag.py evaluate`.
+- Evaluate Model A/B/C with TextFooler, PWWS, and DeepWordBug.
+- Add analysis notebooks that read saved `runs/` outputs.
+- Add better run summaries and metrics CSV files.
+
+Later:
+
+- Run with `sample_frac_per_label: 1.0`.
+- Compare more local LLM attackers, such as `dolphin3`.
+- Add cloud attackers through provider slots for Groq, OpenAI, or Gemini.
+- Consider DVC or Git LFS if dataset/run artifact versioning becomes important.
 
 ## Git Hygiene
 
-Tracked files should be source, notebooks, small seed data, scripts, and paper
-artifacts. Keep these out of Git:
+Keep these out of Git:
 
 - raw datasets
 - local environments and caches
 - model checkpoints and trained model binaries
-- generated experiment folders such as `albert_adversarial_game_model_v*`
-  and `albert_adversarial_val_sets_v*`
-- machine-specific notes or unrelated documents
+- generated `runs/`
+- unrelated local documents
 
 If a generated CSV becomes a paper artifact, move it into a clearly named
-tracked folder such as `paper_artifacts/` instead of committing the whole run
-directory.
+tracked folder such as `paper_artifacts/`.

@@ -1,131 +1,107 @@
 # Start Here
 
-Mail-CAG is a research project about cyclic adversarial training for phishing
-email detection.
+Mail-CAG is a cyclic adversarial training project for phishing-email detection.
 
-The short version:
+## Mental Model
 
-- ALBERT is good at detecting clean phishing emails.
-- We want to test if ALBERT becomes more robust when trained against
-  adversarial phishing emails generated from previous ALBERT rounds.
-- The old notebooks/results are preserved in `legacy_workspace/`.
-- The cleaner project we will build from now lives in `mail_cag_project/`.
+We compare three models:
 
-## First Command
+- **Model A**: clean ALBERT baseline.
+- **Model B**: ALBERT + cyclic LLM rewrites for phishing emails only.
+- **Model C**: ALBERT + cyclic LLM rewrites for phishing and benign emails.
 
-From the repository root:
+For Model B/C, each round starts from the previous round's saved model:
 
-```bash
-conda activate nlp_game
-python mail_cag.py describe
+```text
+round 1: albert-base-v2
+round 2: round_1/model
+round 3: round_2/model
 ```
 
-That command does not train anything. It checks the default Model C setup and
-tells you which data/results already exist.
+So this is a real cyclic defender-attacker loop, not fresh retraining every
+round.
 
-Other useful checks:
+## First Commands
 
 ```bash
-python mail_cag.py describe baseline
+cd ~/Documents/NLP
+conda activate nlp_game
+git pull
+```
+
+Check the project:
+
+```bash
+python mail_cag.py describe model-a
 python mail_cag.py describe model-b
 python mail_cag.py describe model-c
 ```
 
-Before starting a real training run, check the selected config:
+Dry-run before training:
 
 ```bash
-python mail_cag.py run model-a --dry-run
-python mail_cag.py run model-b --dry-run
-python mail_cag.py run model-c --dry-run
+python mail_cag.py run model-b --dry-run --run-id b_smoke_001
 ```
 
-Start the clean baseline first:
+Start or resume Model B:
 
 ```bash
-python mail_cag.py run model-a
+python mail_cag.py run model-b --run-id b_smoke_001
+python mail_cag.py run model-b --resume --run-id b_smoke_001
 ```
 
-Then run one cyclic model:
+Model C is the same shape:
 
 ```bash
-python mail_cag.py run model-b
-# or
-python mail_cag.py run model-c
+python mail_cag.py run model-c --run-id c_smoke_001
+python mail_cag.py run model-c --resume --run-id c_smoke_001
 ```
 
-Outputs go under `runs/`, which is intentionally ignored by Git.
-Each round keeps its final model in `round_N/model/`. The current round also
-keeps one rolling epoch checkpoint in `round_N/checkpoint_current/`; that folder
-is overwritten after every epoch.
-For Model B/C, each round starts from the previous round's saved ALBERT model.
+## Where Things Go
 
-Each run is isolated inside a timestamped run folder. Use `--run-id` when you
-want a memorable name:
-
-```bash
-python mail_cag.py run model-b --run-id smoke_001
-python mail_cag.py run model-b --resume --run-id smoke_001
-```
-
-## Mental Model
-
-Use this map:
+Generated runs live under `runs/`, ignored by Git.
 
 ```text
-mail_cag.py                 friendly command to run things
-mail_cag_project/configs/   experiment settings; use cyclic_llm_both_labels.yaml first
-mail_cag_project/src/       reusable Python code
-mail_cag_project/scripts/   lower-level scripts
-legacy_workspace/           old notebooks, old results, local big files
+runs/model_b_llm_phishing_only/b_smoke_001/
+  clean_train.csv
+  clean_eval.csv
+  round_1/
+    model/
+    checkpoint_current/
+    rewrite_source.csv
+    generated_rewrites.csv
+  round_2/
+  round_3/
 ```
 
-## The Path Forward
+`model/` is the final model for that round.
+`checkpoint_current/` is overwritten after every epoch.
 
-We are moving forward with **LLM-based budgeted cyclic training**.
+## Current Defaults
 
-There are three main models:
+- Dataset: CEAS at `sample_frac_per_label: 0.06`.
+- Defender: `albert-base-v2`.
+- Local LLM attacker: `qwen3:14b`.
+- Rounds: 3 for Model B/C.
+- Between-round rewrite budget: 200 selected emails, 3 candidates each.
 
-- **Model A**: clean ALBERT baseline.
-- **Model B**: cyclic ALBERT with LLM rewrites for phishing emails only.
-- **Model C**: cyclic ALBERT with LLM rewrites for both phishing and benign emails.
+If rewriting is too slow, reduce the Model B/C config:
 
-The main comparison is:
+```yaml
+attacks:
+  candidates_per_email: 1
+  max_examples_per_round: 25
+```
+
+## File Map
 
 ```text
-Model A vs Model B vs Model C
+mail_cag.py                         command you run
+mail_cag_project/configs/           experiment settings
+mail_cag_project/src/mail_cag/      reusable code
+legacy_workspace/                   old notebooks and local artifacts
+runs/                               generated outputs, ignored by Git
 ```
 
-This answers two questions:
-
-1. Does LLM-generated cyclic adversarial training help compared with clean ALBERT?
-2. Does rewriting only phishing emails behave differently from rewriting both labels?
-
-The old v4 config still exists at:
-
-```text
-mail_cag_project/configs/legacy/approach_v4_cumulative.yaml
-```
-
-Treat it as reference, not the main path.
-
-## What We Build Next
-
-The next missing pieces are:
-
-1. Improve/inspect the first `python mail_cag.py run` outputs.
-2. `python mail_cag.py evaluate`
-3. notebooks that only analyze saved results, not contain the whole experiment
-   engine
-
-Keep this rule in mind: notebooks are for thinking and reporting; scripts are
-for experiments we want to trust.
-
-## Model Providers
-
-Use Ollama/Qwen for the first implementation. `qwen3:14b` is the preferred local
-model, with `qwen3:8b` and `qwen3:4b` as smaller fallbacks.
-
-`dolphin3` can be added as an optional local model later. Groq's
-`llama-3.3-70b-versatile` is listed in the provider example for future cloud
-comparisons, but it should not be part of the first run unless we intentionally
-add a cloud-provider experiment.
+Readable code matters here. Keep notebooks for analysis; keep experiment logic
+inside scripts/modules.

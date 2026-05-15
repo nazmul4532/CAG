@@ -65,13 +65,14 @@ python mail_cag_project/scripts/describe_setup.py
 The friendly root command can now dry-run or start training:
 
 ```bash
-python mail_cag.py run model-a --dry-run
-python mail_cag.py run model-a
-python mail_cag.py run model-b
-python mail_cag.py run model-c
+python mail_cag.py run model-a --dry-run --run-id baseline_smoke_001
+python mail_cag.py run model-a --run-id baseline_smoke_001
+python mail_cag.py run model-b --run-id b_smoke_001
+python mail_cag.py run model-b --resume --run-id b_smoke_001
 ```
 
-Training outputs are written to `../runs/`.
+Training outputs are written to `../runs/`. Model B/C carry defender weights
+forward across rounds, so round 2 starts from `round_1/model`.
 
 ## Experiment Terms
 
