@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import hashlib
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,28 @@ def write_rewrite_quality_report(
     if rewrites_df.empty:
         return
 
+    quality_df = score_rewrite_quality(
+        rewrites_df=rewrites_df,
+        model_dir=model_dir,
+        max_length=max_length,
+        batch_size=batch_size,
+    )
+    quality_df.to_csv(round_dir / "rewrite_quality.csv", index=False)
+    (round_dir / "rewrite_quality_summary.json").write_text(
+        json.dumps(summarize_quality(quality_df), indent=2),
+        encoding="utf-8",
+    )
+
+
+def score_rewrite_quality(
+    *,
+    rewrites_df: pd.DataFrame,
+    model_dir: Path,
+    max_length: int,
+    batch_size: int,
+) -> pd.DataFrame:
+    """Return per-rewrite diagnostics, including defender confidence drop."""
+
     scored_rewrites = add_true_label_confidence(
         df=rewrites_df,
         model_dir=model_dir,
@@ -46,6 +69,7 @@ def write_rewrite_quality_report(
 
         rows.append(
             {
+                "generated_index": int(row.get("generated_index", len(rows))),
                 "label": int(row["label"]),
                 "generated_by": row.get("generated_by", ""),
                 "source_true_label_confidence": source_confidence,
@@ -64,18 +88,27 @@ def write_rewrite_quality_report(
                 "looks_like_structured_output": looks_like_structured_output(
                     rewrite_text
                 ),
+                "rewrite_text_hash": normalized_text_hash(rewrite_text),
             }
         )
 
-    quality_df = pd.DataFrame(rows)
-    quality_df.to_csv(round_dir / "rewrite_quality.csv", index=False)
-    (round_dir / "rewrite_quality_summary.json").write_text(
-        json.dumps(summarize_quality(quality_df), indent=2),
-        encoding="utf-8",
-    )
+    return pd.DataFrame(rows)
 
 
 def summarize_quality(df: pd.DataFrame) -> dict[str, Any]:
+    if df.empty:
+        return {
+            "rows": 0,
+            "changed_rate": 0.0,
+            "url_behavior_preserved_rate": 0.0,
+            "non_english_script_rate": 0.0,
+            "structured_output_rate": 0.0,
+            "mean_confidence_drop": 0.0,
+            "mean_char_similarity": 0.0,
+            "mean_word_jaccard": 0.0,
+            "mean_length_ratio": 0.0,
+        }
+
     return {
         "rows": int(len(df)),
         "changed_rate": mean_bool(df["changed"]),
@@ -95,6 +128,10 @@ def find_urls(text: str) -> list[str]:
 
 def normalize(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def normalized_text_hash(text: str) -> str:
+    return hashlib.sha256(normalize(text).encode("utf-8")).hexdigest()
 
 
 def char_similarity(left: str, right: str) -> float:

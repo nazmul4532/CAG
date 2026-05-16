@@ -58,7 +58,12 @@ def round_complete(round_dir: Path) -> bool:
 
 def load_existing_rewrites(run_root: Path) -> pd.DataFrame:
     parts = []
-    for path in sorted(run_root.glob("round_*/generated_rewrites.csv")):
+    for round_dir in sorted(run_root.glob("round_*")):
+        path = round_dir / "training_rewrites.csv"
+        if not path.exists():
+            path = round_dir / "generated_rewrites.csv"
+        if not path.exists():
+            continue
         parts.append(pd.read_csv(path))
     if not parts:
         return pd.DataFrame()

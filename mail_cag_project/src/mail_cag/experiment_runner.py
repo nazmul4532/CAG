@@ -11,7 +11,11 @@ from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
 from mail_cag.llm_rewriter import choose_ollama_model, rewrite_cache_key, rewrite_email
 from mail_cag.rewrite_cache import RewriteCache
-from mail_cag.rewrite_quality import write_rewrite_quality_report
+from mail_cag.rewrite_quality import (
+    normalized_text_hash,
+    score_rewrite_quality,
+    summarize_quality,
+)
 from mail_cag.run_storage import (
     choose_run_root,
     load_existing_rewrites,
@@ -116,6 +120,7 @@ def run_llm_cyclic_rounds(
                         model_dir=round_dir / "model",
                         round_dir=round_dir,
                         ollama_model=ollama_model,
+                        current_train_df=pd.read_csv(round_dir / "training_data.csv"),
                     )
                     rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
             continue
@@ -132,10 +137,14 @@ def run_llm_cyclic_rounds(
         if round_number == rounds:
             continue
 
-        rewrites_path = round_dir / "generated_rewrites.csv"
-        if resume and rewrites_path.exists():
+        training_rewrites_path = round_dir / "training_rewrites.csv"
+        generated_rewrites_path = round_dir / "generated_rewrites.csv"
+        if resume and training_rewrites_path.exists():
+            print(f"round {round_number} training rewrites already exist; reusing")
+            rewrites = pd.read_csv(training_rewrites_path)
+        elif resume and generated_rewrites_path.exists():
             print(f"round {round_number} rewrites already exist; reusing")
-            rewrites = pd.read_csv(rewrites_path)
+            rewrites = pd.read_csv(generated_rewrites_path)
         else:
             rewrites = generate_round_rewrites(
                 config=config,
@@ -143,6 +152,7 @@ def run_llm_cyclic_rounds(
                 model_dir=result.model_dir,
                 round_dir=round_dir,
                 ollama_model=ollama_model,
+                current_train_df=train_df,
             )
         rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
 
@@ -178,6 +188,7 @@ def generate_round_rewrites(
     model_dir: Path,
     round_dir: Path,
     ollama_model: str,
+    current_train_df: pd.DataFrame,
 ) -> pd.DataFrame:
     attacks = config["attacks"]
     llm = config["llm"]
@@ -199,6 +210,7 @@ def generate_round_rewrites(
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
     output_path = round_dir / "generated_rewrites.csv"
+    training_rewrites_path = round_dir / "training_rewrites.csv"
     rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
@@ -236,19 +248,32 @@ def generate_round_rewrites(
             progress.write(f"saved rewrites: {len(rows)}")
         progress.set_postfix(generated=len(rows))
 
-    write_rewrites(output_path, rows)
+    generated_df = pd.DataFrame(rows)
+    if not generated_df.empty:
+        generated_df["generated_index"] = range(len(generated_df))
+    write_rewrites(output_path, generated_df)
     print(f"saved rewrites: {len(rows)}")
     print(f"round rewrites: {len(rows)}")
-    rewrites_df = pd.DataFrame(rows)
-    write_rewrite_quality_report(
-        rewrites_df=rewrites_df,
+
+    quality_df = score_rewrite_quality(
+        rewrites_df=generated_df,
         model_dir=model_dir,
-        round_dir=round_dir,
         max_length=max_length,
         batch_size=eval_batch_size,
     )
+    quality_df.to_csv(round_dir / "rewrite_quality.csv", index=False)
+    save_json(round_dir / "rewrite_quality_summary.json", summarize_quality(quality_df))
     print(f"rewrite quality: {round_dir / 'rewrite_quality_summary.json'}")
-    return rewrites_df
+
+    training_rewrites = choose_training_rewrites(
+        generated_df=generated_df,
+        quality_df=quality_df,
+        current_train_df=current_train_df,
+        min_confidence_drop=float(attacks.get("min_confidence_drop_to_add", 0.0)),
+    )
+    training_rewrites.to_csv(training_rewrites_path, index=False)
+    print(f"training rewrites selected: {len(training_rewrites)}/{len(generated_df)}")
+    return training_rewrites
 
 
 def select_rewrite_sources(
@@ -327,8 +352,42 @@ def make_rewrite_rows(
     return rows
 
 
-def write_rewrites(path: Path, rows: list[dict[str, Any]]) -> None:
+def write_rewrites(path: Path, rows: list[dict[str, Any]] | pd.DataFrame) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def choose_training_rewrites(
+    *,
+    generated_df: pd.DataFrame,
+    quality_df: pd.DataFrame,
+    current_train_df: pd.DataFrame,
+    min_confidence_drop: float,
+) -> pd.DataFrame:
+    """Choose generated rewrites that are allowed into next-round training."""
+
+    if generated_df.empty:
+        return generated_df.copy()
+
+    result = generated_df.merge(
+        quality_df[["generated_index", "confidence_drop", "rewrite_text_hash"]],
+        on="generated_index",
+        how="left",
+    )
+    existing_hashes = {
+        normalized_text_hash(text)
+        for text in current_train_df["text"].fillna("").astype(str)
+    }
+    result["duplicate_in_training"] = result["rewrite_text_hash"].isin(existing_hashes)
+    result["duplicate_in_batch"] = result.duplicated("rewrite_text_hash")
+    result["passes_score_threshold"] = (
+        result["confidence_drop"].fillna(float("-inf")) >= min_confidence_drop
+    )
+    keep = (
+        result["passes_score_threshold"]
+        & ~result["duplicate_in_training"]
+        & ~result["duplicate_in_batch"]
+    )
+    return result[keep].reset_index(drop=True)
 
 
 def mark_data_source(df: pd.DataFrame, source: str) -> pd.DataFrame:

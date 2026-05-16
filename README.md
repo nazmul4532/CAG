@@ -192,6 +192,7 @@ round_N/model/               final model for the round
 round_N/checkpoint_current/  latest epoch checkpoint, overwritten each epoch
 round_N/training_data.csv    data used for that round
 round_N/generated_rewrites.csv
+round_N/training_rewrites.csv
 round_N/rewrite_quality.csv
 round_N/rewrite_quality_summary.json
 rewrite_cache.csv              cached LLM rewrites for this run
@@ -220,6 +221,25 @@ attacks:
   save_every_rewrites: 50
 ```
 
+Generated rewrites and training rewrites are intentionally separate:
+
+```text
+generated_rewrites.csv = everything Qwen rewrote this round
+training_rewrites.csv  = unique rewrites allowed into the next round
+```
+
+To enter `training_rewrites.csv`, a rewrite must not already exist in the
+current training set and must meet the configured confidence-drop threshold:
+
+```yaml
+attacks:
+  min_confidence_drop_to_add: 0.0
+```
+
+With `0.0`, the rewrite is added if it does not make the defender more confident
+than it was on the source email. Increase this later if we want only stronger
+adversarial rewrites to enter training.
+
 LLM rewrites are also cached in the run folder:
 
 ```text
@@ -238,8 +258,8 @@ truncates away.
 After a rewrite batch finishes, the runner writes a small quality report beside
 the generated rewrites. It checks whether rewrites changed, preserved URL
 behavior, avoided non-English scripts/structured output, and how much the
-round's defender confidence dropped on the rewritten email. This is diagnostic
-only; it does not silently skip or filter rewrites.
+round's defender confidence dropped on the rewritten email. The confidence-drop
+score and duplicate check are used to choose `training_rewrites.csv`.
 
 If this is too slow, reduce these in the Model B/C config:
 

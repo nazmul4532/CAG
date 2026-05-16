@@ -90,6 +90,7 @@ runs/model_b_llm_phishing_only/b_smoke_qwen8b_quality_001/
     checkpoint_current/
     rewrite_source.csv
     generated_rewrites.csv
+    training_rewrites.csv
     rewrite_quality.csv
     rewrite_quality_summary.json
   round_2/
