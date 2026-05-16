@@ -109,13 +109,15 @@ runs/model_b_llm_phishing_only/b_smoke_qwen8b_quality_001/
   then regenerate the prepared dataset with that tokenizer.
 - Local LLM attacker: `qwen3:8b` for faster smoke runs.
 - Rounds: 3 for Model B/C.
-- Between-round rewrite budget: 200 selected emails, 1 candidate each.
+- Between-round rewrite source: all eligible active-pool rows.
+- Model B rewrites phishing-labeled rows; Model C rewrites both labels.
 
 If rewriting is too slow, reduce the Model B/C config:
 
 ```yaml
 attacks:
   candidates_per_email: 1
+  rewrite_selection_rule: lowest_true_label_confidence
   max_examples_per_round: 25
 ```
 

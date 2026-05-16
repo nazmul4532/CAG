@@ -12,13 +12,11 @@ from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
 from mail_cag.llm_rewriter import choose_ollama_model, rewrite_cache_key, rewrite_email
 from mail_cag.rewrite_cache import RewriteCache
 from mail_cag.rewrite_quality import (
-    normalized_text_hash,
     score_rewrite_quality,
     summarize_quality,
 )
 from mail_cag.run_storage import (
     choose_run_root,
-    load_generated_rewrite_hashes,
     load_existing_rewrites,
     round_complete,
     write_latest_pointer,
@@ -65,8 +63,8 @@ def run_config(
     run_root.mkdir(parents=True, exist_ok=True)
     write_latest_pointer(experiment_root, run_root)
     save_json(run_root / "config_snapshot.json", config)
-    train_df = mark_data_source(train_df, "clean")
-    eval_df = mark_data_source(eval_df, "clean")
+    train_df = training_rows(train_df, "clean")
+    eval_df = training_rows(eval_df, "clean")
     write_csv_if_missing(train_df, run_root / "clean_train.csv")
     write_csv_if_missing(eval_df, run_root / "clean_eval.csv")
 
@@ -117,17 +115,17 @@ def run_llm_cyclic_rounds(
                 if not rewrites_path.exists():
                     rewrites = generate_round_rewrites(
                         config=config,
-                        source_df=clean_train_df,
+                        source_df=pd.read_csv(round_dir / "training_data.csv"),
                         model_dir=round_dir / "model",
                         round_dir=round_dir,
                         ollama_model=ollama_model,
-                        current_train_df=pd.read_csv(round_dir / "training_data.csv"),
                     )
                     rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
             continue
 
         round_dir.mkdir(parents=True, exist_ok=True)
         train_df = pd.concat([clean_train_df, rewrite_pool], ignore_index=True)
+        train_df = training_rows(train_df)
         train_df.to_csv(round_dir / "training_data.csv", index=False)
 
         print(f"round {round_number} starts from: {start_model}")
@@ -149,11 +147,10 @@ def run_llm_cyclic_rounds(
         else:
             rewrites = generate_round_rewrites(
                 config=config,
-                source_df=clean_train_df,
+                source_df=train_df,
                 model_dir=result.model_dir,
                 round_dir=round_dir,
                 ollama_model=ollama_model,
-                current_train_df=train_df,
             )
         rewrite_pool = pd.concat([rewrite_pool, rewrites], ignore_index=True)
 
@@ -189,12 +186,13 @@ def generate_round_rewrites(
     model_dir: Path,
     round_dir: Path,
     ollama_model: str,
-    current_train_df: pd.DataFrame,
 ) -> pd.DataFrame:
     attacks = config["attacks"]
     llm = config["llm"]
     target_labels = {int(label) for label in attacks["target_labels"]}
-    max_examples = int(attacks["max_examples_per_round"])
+    max_examples = attacks.get("max_examples_per_round")
+    max_examples = None if max_examples is None else int(max_examples)
+    selection_rule = attacks.get("rewrite_selection_rule", "all")
     candidates = int(attacks["candidates_per_email"])
     max_length = int(config["model"]["max_length"])
     eval_batch_size = int(config["training"]["eval_batch_size"])
@@ -204,6 +202,7 @@ def generate_round_rewrites(
         source_df=source_df,
         target_labels=target_labels,
         model_dir=model_dir,
+        selection_rule=selection_rule,
         max_examples=max_examples,
         max_length=max_length,
         batch_size=eval_batch_size,
@@ -212,9 +211,9 @@ def generate_round_rewrites(
 
     output_path = round_dir / "generated_rewrites.csv"
     training_rewrites_path = round_dir / "training_rewrites.csv"
+    decisions_path = round_dir / "rewrite_decisions.csv"
     rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
-    known_rewrite_hashes = load_generated_rewrite_hashes(round_dir.parent)
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
     temperature = float(llm.get("temperature", 0.6))
     top_p = float(llm.get("top_p", 0.9))
@@ -243,15 +242,15 @@ def generate_round_rewrites(
         )
         if from_cache:
             progress.write("cache hit")
+            progress.set_postfix(generated=len(rows))
+            continue
 
-        new_rows = make_new_rewrite_rows(
+        rows.extend(make_rewrite_rows(
             row=row,
             rewrites=rewrites,
             generated_by=ollama_model,
-            known_rewrite_hashes=known_rewrite_hashes,
-        )
-        rows.extend(new_rows)
-        if len(rows) % save_every == 0:
+        ))
+        if rows and len(rows) % save_every == 0:
             write_rewrites(output_path, rows)
             progress.write(f"saved rewrites: {len(rows)}")
         progress.set_postfix(generated=len(rows))
@@ -263,21 +262,28 @@ def generate_round_rewrites(
     print(f"saved rewrites: {len(rows)}")
     print(f"round rewrites: {len(rows)}")
 
-    quality_df = score_rewrite_quality(
-        rewrites_df=generated_df,
-        model_dir=model_dir,
-        max_length=max_length,
-        batch_size=eval_batch_size,
-    )
+    if generated_df.empty:
+        quality_df = pd.DataFrame()
+    else:
+        quality_df = score_rewrite_quality(
+            rewrites_df=generated_df,
+            model_dir=model_dir,
+            max_length=max_length,
+            batch_size=eval_batch_size,
+        )
     quality_df.to_csv(round_dir / "rewrite_quality.csv", index=False)
     save_json(round_dir / "rewrite_quality_summary.json", summarize_quality(quality_df))
     print(f"rewrite quality: {round_dir / 'rewrite_quality_summary.json'}")
 
-    training_rewrites = choose_training_rewrites(
+    decisions = decide_training_rewrites(
         generated_df=generated_df,
         quality_df=quality_df,
-        current_train_df=current_train_df,
         min_confidence_drop=float(attacks.get("min_confidence_drop_to_add", 0.0)),
+    )
+    decisions.to_csv(decisions_path, index=False)
+    training_rewrites = training_rows(
+        decisions[decisions["added_to_training"]],
+        "llm_rewrite",
     )
     training_rewrites.to_csv(training_rewrites_path, index=False)
     print(f"training rewrites selected: {len(training_rewrites)}/{len(generated_df)}")
@@ -289,11 +295,12 @@ def select_rewrite_sources(
     source_df: pd.DataFrame,
     target_labels: set[int],
     model_dir: Path,
-    max_examples: int,
+    selection_rule: str,
+    max_examples: int | None,
     max_length: int,
     batch_size: int,
 ) -> pd.DataFrame:
-    """Pick the examples the current defender is least confident about."""
+    """Score eligible sources and choose which parents to rewrite."""
 
     candidates = source_df[source_df["label"].isin(target_labels)].copy()
     scored = add_true_label_confidence(
@@ -302,7 +309,14 @@ def select_rewrite_sources(
         max_length=max_length,
         batch_size=batch_size,
     )
-    return scored.sort_values("true_label_confidence").head(max_examples)
+    if selection_rule == "all":
+        return scored
+
+    if selection_rule == "lowest_true_label_confidence":
+        ordered = scored.sort_values("true_label_confidence")
+        return ordered if max_examples is None else ordered.head(max_examples)
+
+    raise ValueError(f"Unknown rewrite_selection_rule: {selection_rule}")
 
 
 def get_or_create_rewrites(
@@ -341,23 +355,17 @@ def get_or_create_rewrites(
     return rewrites, False
 
 
-def make_new_rewrite_rows(
+def make_rewrite_rows(
     row: pd.Series,
     rewrites: list[str],
     generated_by: str,
-    known_rewrite_hashes: set[str],
 ) -> list[dict[str, Any]]:
     rows = []
     for rewrite in rewrites:
-        rewrite_hash = normalized_text_hash(rewrite)
-        if rewrite_hash in known_rewrite_hashes:
-            continue
-        known_rewrite_hashes.add(rewrite_hash)
-
         item = row.to_dict()
         item["source_text"] = item["text"]
+        item["source_data_source"] = item.get("data_source", "unknown")
         item["source_true_label_confidence"] = item["true_label_confidence"]
-        item["rewrite_text_hash"] = rewrite_hash
         item["text"] = rewrite
         item["subject"] = ""
         item["body"] = rewrite
@@ -371,39 +379,43 @@ def write_rewrites(path: Path, rows: list[dict[str, Any]] | pd.DataFrame) -> Non
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
-def choose_training_rewrites(
+def decide_training_rewrites(
     *,
     generated_df: pd.DataFrame,
     quality_df: pd.DataFrame,
-    current_train_df: pd.DataFrame,
     min_confidence_drop: float,
 ) -> pd.DataFrame:
-    """Choose generated rewrites that are allowed into next-round training."""
+    """Record which new children are useful enough for next-round training."""
 
     if generated_df.empty:
-        return generated_df.copy()
+        result = generated_df.copy()
+        result["confidence_drop"] = []
+        result["passes_score_threshold"] = []
+        result["added_to_training"] = []
+        result["decision_reason"] = []
+        return result
 
     result = generated_df.merge(
-        quality_df[["generated_index", "confidence_drop", "rewrite_text_hash"]],
+        quality_df[["generated_index", "confidence_drop"]],
         on="generated_index",
         how="left",
     )
-    existing_hashes = {
-        normalized_text_hash(text)
-        for text in current_train_df["text"].fillna("").astype(str)
-    }
-    result["duplicate_in_training"] = result["rewrite_text_hash"].isin(existing_hashes)
     result["passes_score_threshold"] = (
         result["confidence_drop"].fillna(float("-inf")) >= min_confidence_drop
     )
-    keep = result["passes_score_threshold"] & ~result["duplicate_in_training"]
-    return result[keep].reset_index(drop=True)
+    result["added_to_training"] = result["passes_score_threshold"]
+    result["decision_reason"] = "confidence_drop_too_low"
+    result.loc[result["added_to_training"], "decision_reason"] = "useful"
+    return result.reset_index(drop=True)
 
 
-def mark_data_source(df: pd.DataFrame, source: str) -> pd.DataFrame:
+def training_rows(df: pd.DataFrame, source: str | None = None) -> pd.DataFrame:
+    """Keep only columns that should appear in model training data."""
+
     result = df.copy()
-    result["data_source"] = source
-    return result
+    if source is not None or "data_source" not in result:
+        result["data_source"] = source or "unknown"
+    return result[["text", "label", "data_source"]].copy()
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:

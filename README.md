@@ -191,8 +191,10 @@ Each round keeps:
 round_N/model/               final model for the round
 round_N/checkpoint_current/  latest epoch checkpoint, overwritten each epoch
 round_N/training_data.csv    data used for that round
+round_N/rewrite_source.csv   active-pool parents selected this round
 round_N/generated_rewrites.csv
 round_N/training_rewrites.csv
+round_N/rewrite_decisions.csv
 round_N/rewrite_quality.csv
 round_N/rewrite_quality_summary.json
 rewrite_cache.csv              cached LLM rewrites for this run
@@ -201,17 +203,23 @@ rewrite_cache.csv              cached LLM rewrites for this run
 During LLM rewriting, progress should print as:
 
 ```text
-rewriting emails:  12%|████▌              | 24/200
+rewriting emails:  12%|████▌              | 24/2000
 ```
 
 ## Current Slow Part
 
-Between rounds, Model B/C asks Qwen to rewrite selected emails. Current smoke
-settings can still request up to:
+Between rounds, Model B/C asks Qwen to rewrite selected active-pool examples.
+The active pool is the current round's training data: clean emails plus
+previous useful rewrites. Current configs select all eligible active-pool rows:
 
-```text
-200 selected emails x 1 candidate = 200 rewrites per between-round step
+```yaml
+attacks:
+  rewrite_selection_rule: all
+  max_examples_per_round: null
 ```
+
+For Model B, eligible means phishing-labeled rows only. For Model C, eligible
+means both phishing and benign rows.
 
 Generated rewrites are saved every 50 rows and once again at the end of the
 batch:
@@ -225,12 +233,13 @@ Generated rewrites and training rewrites are intentionally separate:
 
 ```text
 generated_rewrites.csv = new rewrites Qwen produced this round
-training_rewrites.csv  = unique rewrites allowed into the next round
+training_rewrites.csv  = useful rewrites allowed into the next round
+rewrite_decisions.csv  = why each new rewrite was or was not added
 ```
 
-A cached rewrite that already appeared in an earlier round is not written again
-as a new generated rewrite. To enter `training_rewrites.csv`, a rewrite must not
-already exist in the current training set and must meet the configured
+If a selected parent already has a successful cached child for the same prompt,
+model, and generation settings, no new child is written for that parent. To
+enter `training_rewrites.csv`, a newly generated child must meet the configured
 confidence-drop threshold:
 
 ```yaml
@@ -261,13 +270,14 @@ After a rewrite batch finishes, the runner writes a small quality report beside
 the generated rewrites. It checks whether rewrites changed, preserved URL
 behavior, avoided non-English scripts/structured output, and how much the
 round's defender confidence dropped on the rewritten email. The confidence-drop
-score and duplicate check are used to choose `training_rewrites.csv`.
+score is used to choose `training_rewrites.csv`.
 
 If this is too slow, reduce these in the Model B/C config:
 
 ```yaml
 attacks:
   candidates_per_email: 1
+  rewrite_selection_rule: lowest_true_label_confidence
   max_examples_per_round: 25
 ```
 

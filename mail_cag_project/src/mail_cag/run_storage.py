@@ -6,8 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from mail_cag.rewrite_quality import normalized_text_hash
-
 
 def choose_run_root(experiment_root: Path, run_id: str | None, resume: bool) -> Path:
     """Pick an isolated folder for this run."""
@@ -66,24 +64,14 @@ def load_existing_rewrites(run_root: Path) -> pd.DataFrame:
             path = round_dir / "generated_rewrites.csv"
         if not path.exists():
             continue
-        parts.append(pd.read_csv(path))
+        parts.append(training_columns(pd.read_csv(path)))
     if not parts:
         return pd.DataFrame()
     return pd.concat(parts, ignore_index=True)
 
 
-def load_generated_rewrite_hashes(run_root: Path) -> set[str]:
-    """Return every rewrite text already generated in this run."""
-
-    hashes: set[str] = set()
-    for path in sorted(run_root.glob("round_*/generated_rewrites.csv")):
-        df = pd.read_csv(path)
-        if "rewrite_text_hash" in df:
-            hashes.update(df["rewrite_text_hash"].dropna().astype(str))
-            continue
-        if "text" in df:
-            hashes.update(
-                normalized_text_hash(text)
-                for text in df["text"].fillna("").astype(str)
-            )
-    return hashes
+def training_columns(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+    if "data_source" not in result:
+        result["data_source"] = "llm_rewrite"
+    return result[["text", "label", "data_source"]]
