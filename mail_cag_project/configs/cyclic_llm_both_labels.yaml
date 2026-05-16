@@ -41,6 +41,7 @@ attacks:
 llm:
   provider: ollama
   model: qwen3:8b
+  cache_enabled: true
   fallback_models:
     - qwen3:14b
     - qwen3:4b

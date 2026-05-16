@@ -49,3 +49,13 @@ class RewriteCache:
             header=not self.path.exists(),
             index=False,
         )
+
+
+class DisabledRewriteCache:
+    """Cache-shaped object that never reads or writes cached rewrites."""
+
+    def get(self, key: str) -> list[str] | None:
+        return None
+
+    def put(self, key: str, rewrites: list[str]) -> None:
+        return None

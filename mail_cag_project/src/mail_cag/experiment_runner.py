@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from mail_cag.config import load_config, resolve_from_config
 from mail_cag.data import add_email_text, load_ceas_subset, split_train_eval
 from mail_cag.llm_rewriter import choose_ollama_model, rewrite_cache_key, rewrite_email
-from mail_cag.rewrite_cache import RewriteCache
+from mail_cag.rewrite_cache import DisabledRewriteCache, RewriteCache
 from mail_cag.rewrite_quality import (
     score_rewrite_quality,
     summarize_quality,
@@ -227,7 +227,7 @@ def generate_round_rewrites(
     output_path = round_dir / "generated_rewrites.csv"
     training_rewrites_path = round_dir / "training_rewrites.csv"
     decisions_path = round_dir / "rewrite_decisions.csv"
-    rewrite_cache = RewriteCache(resolve_rewrite_cache_path(config, round_dir))
+    rewrite_cache = make_rewrite_cache(config, round_dir)
     rows = []
     cache_hits = 0
     last_saved = 0
@@ -410,6 +410,21 @@ def get_or_create_rewrites(
     )
     cache.put(cache_key, rewrites)
     return rewrites, False
+
+
+def make_rewrite_cache(
+    config: dict[str, Any],
+    round_dir: Path,
+) -> RewriteCache | DisabledRewriteCache:
+    """Create the configured rewrite cache."""
+
+    if not bool(config.get("llm", {}).get("cache_enabled", True)):
+        print("LLM rewrite cache: disabled", flush=True)
+        return DisabledRewriteCache()
+
+    cache_path = resolve_rewrite_cache_path(config, round_dir)
+    print(f"LLM rewrite cache: {cache_path}", flush=True)
+    return RewriteCache(cache_path)
 
 
 def make_rewrite_rows(

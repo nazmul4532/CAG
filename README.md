@@ -38,6 +38,12 @@ The attacker for the first implementation is local Ollama with `qwen3:8b`.
 for later held-out evaluation, not training-data generation.
 The LLM prompt asks for exactly one plain rewritten email, not JSON, while
 preserving language, URL behavior, spam/phishing style, and suspicious intent.
+LLM rewrite caching is explicit in the Model B/C configs:
+
+```yaml
+llm:
+  cache_enabled: true
+```
 
 The configs currently use 6% of CEAS for smoke testing:
 
@@ -257,11 +263,12 @@ Model C share this cache:
 data/cache/shared_llm_rewrite_cache.csv
 ```
 
-The cache key includes the actual prompt, Ollama model, candidate count,
-temperature, and top-p. If the same rewrite request appears again, the runner
-reuses the cached rewrite instead of calling Ollama again. The cache stores only
-LLM request outputs; defender-specific decisions still stay inside each run's
-round folders.
+With `cache_enabled: true`, the runner reads/writes the shared cache. With
+`cache_enabled: false`, every selected parent calls Ollama and no cache file is
+read or written. The cache key includes the parent id, actual prompt, Ollama
+model, candidate count, temperature, and top-p. The cache stores only LLM
+request outputs; defender-specific decisions still stay inside each run's round
+folders.
 
 Qwen only receives the same text window that the current defender can see. With
 today's ALBERT config, that is 512 tokens. This keeps rewriting aligned with the

@@ -85,7 +85,9 @@ python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
 
 Training outputs are written to `../runs/`. Model B/C carry defender weights
 forward across rounds, so round 2 starts from `round_1/model`. Identical LLM
-requests are cached across Model B/C in `../data/cache/`.
+requests are cached across Model B/C in `../data/cache/` when
+`llm.cache_enabled: true`. Set it to `false` in the Model B/C config to force
+every selected parent to call Ollama and avoid reading or writing the cache.
 
 ## Experiment Terms
 
