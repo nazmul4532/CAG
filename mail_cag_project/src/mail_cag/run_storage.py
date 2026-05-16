@@ -74,4 +74,9 @@ def training_columns(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
     if "data_source" not in result:
         result["data_source"] = "llm_rewrite"
-    return result[["text", "label", "data_source"]]
+    if "parent_id" not in result:
+        result["parent_id"] = [
+            f"{data_source}:{index}"
+            for index, data_source in zip(result.index, result["data_source"])
+        ]
+    return result[["parent_id", "text", "label", "data_source"]]

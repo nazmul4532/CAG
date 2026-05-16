@@ -200,6 +200,8 @@ def generate_round_rewrites(
     candidates = int(attacks["candidates_per_email"])
     max_length = int(config["model"]["max_length"])
     eval_batch_size = int(config["training"]["eval_batch_size"])
+    temperature = float(llm.get("temperature", 0.6))
+    top_p = float(llm.get("top_p", 0.9))
     tokenizer = load_tokenizer(config["model"]["base_model"])
 
     selected = select_rewrite_sources(
@@ -211,6 +213,15 @@ def generate_round_rewrites(
         max_length=max_length,
         batch_size=eval_batch_size,
     )
+    selected = add_rewrite_request_metadata(
+        selected=selected,
+        tokenizer=tokenizer,
+        max_length=max_length,
+        model=ollama_model,
+        candidates=candidates,
+        temperature=temperature,
+        top_p=top_p,
+    )
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
     output_path = round_dir / "generated_rewrites.csv"
@@ -221,8 +232,6 @@ def generate_round_rewrites(
     cache_hits = 0
     last_saved = 0
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
-    temperature = float(llm.get("temperature", 0.6))
-    top_p = float(llm.get("top_p", 0.9))
 
     print(f"selected emails to rewrite: {len(selected)}", flush=True)
     progress = tqdm(
@@ -233,17 +242,14 @@ def generate_round_rewrites(
         mininterval=1.0,
     )
     for _, row in progress:
-        visible_text = visible_defender_text(
-            text=str(row["text"]),
-            tokenizer=tokenizer,
-            max_length=max_length,
-        )
+        visible_text = str(row["rewrite_request_text"])
         rewrites, from_cache = get_or_create_rewrites(
             cache=rewrite_cache,
             llm=llm,
             model=ollama_model,
             label=int(row["label"]),
             text=visible_text,
+            parent_id=str(row["parent_id"]),
             candidates=candidates,
             temperature=temperature,
             top_p=top_p,
@@ -329,6 +335,45 @@ def select_rewrite_sources(
     raise ValueError(f"Unknown rewrite_selection_rule: {selection_rule}")
 
 
+def add_rewrite_request_metadata(
+    *,
+    selected: pd.DataFrame,
+    tokenizer: Any,
+    max_length: int,
+    model: str,
+    candidates: int,
+    temperature: float,
+    top_p: float,
+) -> pd.DataFrame:
+    """Record the exact LLM request used for each selected parent row."""
+
+    if selected.empty:
+        return selected.copy()
+
+    result = selected.copy()
+    result["rewrite_request_text"] = [
+        visible_defender_text(str(text), tokenizer, max_length)
+        for text in result["text"]
+    ]
+    result["rewrite_request_key"] = [
+        rewrite_cache_key(
+            model=model,
+            label=int(label),
+            text=text,
+            candidates=candidates,
+            temperature=temperature,
+            top_p=top_p,
+            parent_id=str(parent_id),
+        )
+        for label, text, parent_id in zip(
+            result["label"],
+            result["rewrite_request_text"],
+            result["parent_id"],
+        )
+    ]
+    return result.reset_index(drop=True)
+
+
 def get_or_create_rewrites(
     *,
     cache: RewriteCache,
@@ -336,6 +381,7 @@ def get_or_create_rewrites(
     model: str,
     label: int,
     text: str,
+    parent_id: str,
     candidates: int,
     temperature: float,
     top_p: float,
@@ -347,6 +393,7 @@ def get_or_create_rewrites(
         candidates=candidates,
         temperature=temperature,
         top_p=top_p,
+        parent_id=parent_id,
     )
     cached = cache.get(cache_key)
     if cached is not None:
@@ -371,14 +418,19 @@ def make_rewrite_rows(
     generated_by: str,
 ) -> list[dict[str, Any]]:
     rows = []
-    for rewrite in rewrites:
+    for index, rewrite in enumerate(rewrites):
         item = row.to_dict()
+        source_parent_id = str(item["parent_id"])
         item["source_text"] = item["text"]
+        item["source_parent_id"] = source_parent_id
         item["source_data_source"] = item.get("data_source", "unknown")
         item["source_true_label_confidence"] = item["true_label_confidence"]
         item["text"] = rewrite
         item["subject"] = ""
         item["body"] = rewrite
+        item["parent_id"] = (
+            f"rewrite:{source_parent_id}:{item['rewrite_request_key'][:12]}:{index}"
+        )
         item["generated_by"] = generated_by
         item["data_source"] = "llm_rewrite"
         rows.append(item)
@@ -425,7 +477,12 @@ def training_rows(df: pd.DataFrame, source: str | None = None) -> pd.DataFrame:
     result = df.copy()
     if source is not None or "data_source" not in result:
         result["data_source"] = source or "unknown"
-    return result[["text", "label", "data_source"]].copy()
+    if "parent_id" not in result:
+        result["parent_id"] = [
+            f"{data_source}:{index}"
+            for index, data_source in zip(result.index, result["data_source"])
+        ]
+    return result[["parent_id", "text", "label", "data_source"]].copy()
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:

@@ -62,11 +62,13 @@ def rewrite_cache_key(
     candidates: int,
     temperature: float,
     top_p: float,
+    parent_id: str,
 ) -> str:
     """Return a stable key for one LLM rewrite request."""
 
     payload = {
         "model": model,
+        "parent_id": parent_id,
         "prompt": build_prompt(label=label, text=text, candidates=candidates),
         "candidates": int(candidates),
         "temperature": float(temperature),
