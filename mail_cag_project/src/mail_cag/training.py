@@ -79,7 +79,13 @@ def train_transformer_classifier(
     model.train()
     for epoch in range(1, epochs + 1):
         running_loss = 0.0
-        progress = tqdm(train_loader, desc=f"epoch {epoch}/{epochs}", leave=False)
+        progress = tqdm(
+            train_loader,
+            desc=f"epoch {epoch}/{epochs}",
+            dynamic_ncols=True,
+            leave=False,
+            mininterval=1.0,
+        )
         for batch in progress:
             batch = {key: value.to(device) for key, value in batch.items()}
             loss = model(**batch).loss
@@ -89,7 +95,7 @@ def train_transformer_classifier(
             running_loss += float(loss.item())
             progress.set_postfix(loss=f"{loss.item():.4f}")
         average_loss = running_loss / max(len(train_loader), 1)
-        print(f"epoch {epoch}/{epochs} loss: {average_loss:.4f}", flush=True)
+        tqdm.write(f"epoch {epoch}/{epochs} loss: {average_loss:.4f}")
         if checkpoint_dir is not None:
             save_current_checkpoint(model, tokenizer, checkpoint_dir, epoch)
 
@@ -116,7 +122,13 @@ def evaluate_accuracy(model, loader: DataLoader, device: torch.device) -> float:
     total = 0
     model.eval()
     with torch.no_grad():
-        for batch in tqdm(loader, desc="evaluating", leave=False):
+        for batch in tqdm(
+            loader,
+            desc="evaluating",
+            dynamic_ncols=True,
+            leave=False,
+            mininterval=1.0,
+        ):
             labels = batch.pop("labels").to(device)
             batch = {key: value.to(device) for key, value in batch.items()}
             predictions = model(**batch).logits.argmax(dim=1)
@@ -145,7 +157,13 @@ def add_true_label_confidence(
     scores: list[float] = []
     model.eval()
     with torch.no_grad():
-        for batch in tqdm(loader, desc="scoring emails", leave=False):
+        for batch in tqdm(
+            loader,
+            desc="scoring emails",
+            dynamic_ncols=True,
+            leave=False,
+            mininterval=1.0,
+        ):
             labels = batch.pop("labels").to(device)
             batch = {key: value.to(device) for key, value in batch.items()}
             probs = model(**batch).logits.softmax(dim=1)
@@ -199,7 +217,13 @@ def predict_saved_model(
     predictions: list[int] = []
     model.eval()
     with torch.no_grad():
-        for batch in tqdm(loader, desc="evaluating saved model", leave=False):
+        for batch in tqdm(
+            loader,
+            desc="evaluating saved model",
+            dynamic_ncols=True,
+            leave=False,
+            mininterval=1.0,
+        ):
             batch_labels = batch.pop("labels").to(device)
             batch = {key: value.to(device) for key, value in batch.items()}
             batch_predictions = model(**batch).logits.argmax(dim=1)

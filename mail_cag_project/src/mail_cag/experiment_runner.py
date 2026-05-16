@@ -214,6 +214,8 @@ def generate_round_rewrites(
     decisions_path = round_dir / "rewrite_decisions.csv"
     rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
+    cache_hits = 0
+    last_saved = 0
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
     temperature = float(llm.get("temperature", 0.6))
     top_p = float(llm.get("top_p", 0.9))
@@ -223,6 +225,8 @@ def generate_round_rewrites(
         selected.iterrows(),
         total=len(selected),
         desc="rewriting emails",
+        dynamic_ncols=True,
+        mininterval=1.0,
     )
     for _, row in progress:
         visible_text = visible_defender_text(
@@ -241,8 +245,8 @@ def generate_round_rewrites(
             top_p=top_p,
         )
         if from_cache:
-            progress.write("cache hit")
-            progress.set_postfix(generated=len(rows))
+            cache_hits += 1
+            progress.set_postfix(generated=len(rows), cached=cache_hits, saved=last_saved)
             continue
 
         rows.extend(make_rewrite_rows(
@@ -252,14 +256,16 @@ def generate_round_rewrites(
         ))
         if rows and len(rows) % save_every == 0:
             write_rewrites(output_path, rows)
-            progress.write(f"saved rewrites: {len(rows)}")
-        progress.set_postfix(generated=len(rows))
+            last_saved = len(rows)
+        progress.set_postfix(generated=len(rows), cached=cache_hits, saved=last_saved)
 
     generated_df = pd.DataFrame(rows)
     if not generated_df.empty:
         generated_df["generated_index"] = range(len(generated_df))
     write_rewrites(output_path, generated_df)
-    print(f"saved rewrites: {len(rows)}")
+    last_saved = len(rows)
+    print(f"saved rewrites: {last_saved}")
+    print(f"cache hits skipped: {cache_hits}")
     print(f"round rewrites: {len(rows)}")
 
     if generated_df.empty:
