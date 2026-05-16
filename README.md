@@ -197,7 +197,6 @@ round_N/training_rewrites.csv
 round_N/rewrite_decisions.csv
 round_N/rewrite_quality.csv
 round_N/rewrite_quality_summary.json
-rewrite_cache.csv              cached LLM rewrites for this run
 ```
 
 During LLM rewriting, progress should print as:
@@ -251,15 +250,18 @@ With `0.0`, the rewrite is added if it does not make the defender more confident
 than it was on the source email. Increase this later if we want only stronger
 adversarial rewrites to enter training.
 
-LLM rewrites are also cached in the run folder:
+LLM request results are cached separately from training decisions. Model B and
+Model C share this cache:
 
 ```text
-runs/<experiment>/<run_id>/rewrite_cache.csv
+data/cache/shared_llm_rewrite_cache.csv
 ```
 
 The cache key includes the actual prompt, Ollama model, candidate count,
 temperature, and top-p. If the same rewrite request appears again, the runner
-reuses the cached rewrite instead of calling Ollama again.
+reuses the cached rewrite instead of calling Ollama again. The cache stores only
+LLM request outputs; defender-specific decisions still stay inside each run's
+round folders.
 
 Qwen only receives the same text window that the current defender can see. With
 today's ALBERT config, that is 512 tokens. This keeps rewriting aligned with the

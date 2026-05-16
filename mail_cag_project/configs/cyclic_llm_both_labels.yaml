@@ -58,3 +58,4 @@ evaluation:
 
 paths:
   run_root: ../../runs/model_c_llm_both_labels
+  rewrite_cache: ../../data/cache/shared_llm_rewrite_cache.csv

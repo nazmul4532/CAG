@@ -57,3 +57,4 @@ evaluation:
 
 paths:
   run_root: ../../runs/model_b_llm_phishing_only
+  rewrite_cache: ../../data/cache/shared_llm_rewrite_cache.csv

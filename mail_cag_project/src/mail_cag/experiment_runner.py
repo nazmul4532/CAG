@@ -39,6 +39,10 @@ def run_config(
     config_path = Path(config_path)
     config = load_config(config_path)
     experiment_root = resolve_from_config(config_path, config["paths"]["run_root"])
+    if config.get("paths", {}).get("rewrite_cache"):
+        config["paths"]["rewrite_cache"] = str(
+            resolve_from_config(config_path, config["paths"]["rewrite_cache"])
+        )
     run_root = choose_run_root(experiment_root, run_id, resume)
     raw_path = resolve_from_config(config_path, config["data"]["raw_path"])
 
@@ -212,7 +216,7 @@ def generate_round_rewrites(
     output_path = round_dir / "generated_rewrites.csv"
     training_rewrites_path = round_dir / "training_rewrites.csv"
     decisions_path = round_dir / "rewrite_decisions.csv"
-    rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
+    rewrite_cache = RewriteCache(resolve_rewrite_cache_path(config, round_dir))
     rows = []
     cache_hits = 0
     last_saved = 0
@@ -443,3 +447,16 @@ def visible_defender_text(text: str, tokenizer, max_length: int) -> str:
         max_length=max_length,
     )
     return tokenizer.decode(token_ids, skip_special_tokens=True).strip()
+
+
+def resolve_rewrite_cache_path(config: dict[str, Any], round_dir: Path) -> Path:
+    """Choose the LLM cache location.
+
+    `paths.rewrite_cache` is shared across experiments when configured. If an
+    older config omits it, we keep the previous run-local cache behavior.
+    """
+
+    cache_path = config.get("paths", {}).get("rewrite_cache")
+    if cache_path:
+        return Path(cache_path).expanduser().resolve()
+    return round_dir.parent / "rewrite_cache.csv"

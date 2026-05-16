@@ -84,8 +84,8 @@ python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
 ```
 
 Training outputs are written to `../runs/`. Model B/C carry defender weights
-forward across rounds, so round 2 starts from `round_1/model`. LLM rewrites are
-cached in each run folder as `rewrite_cache.csv`.
+forward across rounds, so round 2 starts from `round_1/model`. Identical LLM
+requests are cached across Model B/C in `../data/cache/`.
 
 ## Experiment Terms
 

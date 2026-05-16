@@ -29,6 +29,7 @@ ENV/
 .torch/
 .textattack/
 .cache/
+data/cache/
 legacy_workspace/caches/
 
 # Generated experiment workspaces
