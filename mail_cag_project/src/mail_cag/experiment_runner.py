@@ -18,6 +18,7 @@ from mail_cag.rewrite_quality import (
 )
 from mail_cag.run_storage import (
     choose_run_root,
+    load_generated_rewrite_hashes,
     load_existing_rewrites,
     round_complete,
     write_latest_pointer,
@@ -213,6 +214,7 @@ def generate_round_rewrites(
     training_rewrites_path = round_dir / "training_rewrites.csv"
     rewrite_cache = RewriteCache(round_dir.parent / "rewrite_cache.csv")
     rows = []
+    known_rewrite_hashes = load_generated_rewrite_hashes(round_dir.parent)
     save_every = max(1, int(attacks.get("save_every_rewrites", 50)))
     temperature = float(llm.get("temperature", 0.6))
     top_p = float(llm.get("top_p", 0.9))
@@ -242,7 +244,13 @@ def generate_round_rewrites(
         if from_cache:
             progress.write("cache hit")
 
-        rows.extend(make_rewrite_rows(row, rewrites, ollama_model))
+        new_rows = make_new_rewrite_rows(
+            row=row,
+            rewrites=rewrites,
+            generated_by=ollama_model,
+            known_rewrite_hashes=known_rewrite_hashes,
+        )
+        rows.extend(new_rows)
         if len(rows) % save_every == 0:
             write_rewrites(output_path, rows)
             progress.write(f"saved rewrites: {len(rows)}")
@@ -333,16 +341,23 @@ def get_or_create_rewrites(
     return rewrites, False
 
 
-def make_rewrite_rows(
+def make_new_rewrite_rows(
     row: pd.Series,
     rewrites: list[str],
     generated_by: str,
+    known_rewrite_hashes: set[str],
 ) -> list[dict[str, Any]]:
     rows = []
     for rewrite in rewrites:
+        rewrite_hash = normalized_text_hash(rewrite)
+        if rewrite_hash in known_rewrite_hashes:
+            continue
+        known_rewrite_hashes.add(rewrite_hash)
+
         item = row.to_dict()
         item["source_text"] = item["text"]
         item["source_true_label_confidence"] = item["true_label_confidence"]
+        item["rewrite_text_hash"] = rewrite_hash
         item["text"] = rewrite
         item["subject"] = ""
         item["body"] = rewrite
@@ -378,15 +393,10 @@ def choose_training_rewrites(
         for text in current_train_df["text"].fillna("").astype(str)
     }
     result["duplicate_in_training"] = result["rewrite_text_hash"].isin(existing_hashes)
-    result["duplicate_in_batch"] = result.duplicated("rewrite_text_hash")
     result["passes_score_threshold"] = (
         result["confidence_drop"].fillna(float("-inf")) >= min_confidence_drop
     )
-    keep = (
-        result["passes_score_threshold"]
-        & ~result["duplicate_in_training"]
-        & ~result["duplicate_in_batch"]
-    )
+    keep = result["passes_score_threshold"] & ~result["duplicate_in_training"]
     return result[keep].reset_index(drop=True)
 
 

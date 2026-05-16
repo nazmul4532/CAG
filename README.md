@@ -224,12 +224,14 @@ attacks:
 Generated rewrites and training rewrites are intentionally separate:
 
 ```text
-generated_rewrites.csv = everything Qwen rewrote this round
+generated_rewrites.csv = new rewrites Qwen produced this round
 training_rewrites.csv  = unique rewrites allowed into the next round
 ```
 
-To enter `training_rewrites.csv`, a rewrite must not already exist in the
-current training set and must meet the configured confidence-drop threshold:
+A cached rewrite that already appeared in an earlier round is not written again
+as a new generated rewrite. To enter `training_rewrites.csv`, a rewrite must not
+already exist in the current training set and must meet the configured
+confidence-drop threshold:
 
 ```yaml
 attacks:
