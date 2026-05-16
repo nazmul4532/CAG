@@ -60,6 +60,8 @@ def run_config(
     run_root.mkdir(parents=True, exist_ok=True)
     write_latest_pointer(experiment_root, run_root)
     save_json(run_root / "config_snapshot.json", config)
+    train_df = mark_data_source(train_df, "clean")
+    eval_df = mark_data_source(eval_df, "clean")
     write_csv_if_missing(train_df, run_root / "clean_train.csv")
     write_csv_if_missing(eval_df, run_root / "clean_eval.csv")
 
@@ -320,12 +322,19 @@ def make_rewrite_rows(
         item["subject"] = ""
         item["body"] = rewrite
         item["generated_by"] = generated_by
+        item["data_source"] = "llm_rewrite"
         rows.append(item)
     return rows
 
 
 def write_rewrites(path: Path, rows: list[dict[str, Any]]) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
+
+
+def mark_data_source(df: pd.DataFrame, source: str) -> pd.DataFrame:
+    result = df.copy()
+    result["data_source"] = source
+    return result
 
 
 def save_json(path: Path, data: dict[str, Any]) -> None:
