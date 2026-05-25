@@ -8,7 +8,11 @@ We compare three models:
 
 - **Model A**: clean defender baseline. Right now the defender is ALBERT.
 - **Model B**: defender + cyclic LLM rewrites for phishing emails only.
+- **Model B Improved**: Model B with an improved phishing-specific LLM
+  rewrite prompt and separate cache/run folder.
 - **Model C**: defender + cyclic LLM rewrites for phishing and benign emails.
+- **Model D**: defender + cyclic LLM rewrites for both labels with
+  label-aware prompts and balanced random rewrite selection.
 
 For Model B/C, each round starts from the previous round's saved model:
 
@@ -34,7 +38,9 @@ Check the project:
 ```bash
 python mail_cag.py describe model-a
 python mail_cag.py describe model-b
+python mail_cag.py describe b-improved
 python mail_cag.py describe model-c
+python mail_cag.py describe model-d
 ```
 
 Download required local models:
@@ -48,7 +54,9 @@ Dry-run before training:
 ```bash
 python mail_cag.py run model-a --dry-run --run-id a_smoke_001
 python mail_cag.py run model-b --dry-run --run-id b_smoke_qwen8b_quality_001
+python mail_cag.py run b-improved --dry-run --run-id b_improved_qwen8b_001
 python mail_cag.py run model-c --dry-run --run-id c_smoke_qwen8b_quality_001
+python mail_cag.py run model-d --dry-run --run-id d_smoke_qwen8b_label_aware_001
 ```
 
 Run smoke tests from the beginning:
@@ -57,6 +65,7 @@ Run smoke tests from the beginning:
 python mail_cag.py run model-a --run-id a_smoke_001
 python mail_cag.py run model-b --run-id b_smoke_qwen8b_quality_001
 python mail_cag.py run model-c --run-id c_smoke_qwen8b_quality_001
+python mail_cag.py run model-d --run-id d_smoke_qwen8b_label_aware_001
 ```
 
 Resume after interruption:
@@ -65,6 +74,7 @@ Resume after interruption:
 python mail_cag.py run model-a --resume --run-id a_smoke_001
 python mail_cag.py run model-b --resume --run-id b_smoke_qwen8b_quality_001
 python mail_cag.py run model-c --resume --run-id c_smoke_qwen8b_quality_001
+python mail_cag.py run model-d --resume --run-id d_smoke_qwen8b_label_aware_001
 ```
 
 Evaluate a completed run:
@@ -73,7 +83,48 @@ Evaluate a completed run:
 python mail_cag.py evaluate model-a --run-id a_smoke_001
 python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001
 python mail_cag.py evaluate model-c --run-id c_smoke_qwen8b_quality_001
+python mail_cag.py evaluate model-d --run-id d_smoke_qwen8b_label_aware_001
 python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001 --round 1
+```
+
+Evaluate every completed cyclic round with held-out TextAttack attacks:
+
+```bash
+python mail_cag.py evaluate model-b --run-id b_smoke_qwen8b_quality_001 --all-rounds --generate-adversarial --attacks pwws textfooler deepwordbug
+python mail_cag.py evaluate model-c --run-id c_smoke_qwen8b_quality_001 --all-rounds --generate-adversarial --attacks pwws textfooler deepwordbug
+python mail_cag.py evaluate model-d --run-id d_smoke_qwen8b_label_aware_001 --all-rounds --generate-adversarial --attacks pwws textfooler deepwordbug
+```
+
+This writes per-round adversarial validation sets, attack stats, predictions,
+`evaluation/evaluation_matrix.csv`, separate matrices such as
+`evaluation/evaluation_matrix_textfooler.csv`, and
+legacy-style cross-round matrices/heatmaps such as
+`evaluation/cross_eval_textfooler_accuracy_matrix.csv` and
+`evaluation/cross_eval_textfooler_accuracy_heatmap.png`, plus adversarial-only
+versions such as `evaluation/cross_eval_textfooler_adv_only_accuracy_matrix.csv`.
+The evaluation matrices also include bias diagnostics such as benign false
+positive rate, phishing false negative rate, per-class recall, predicted
+phishing share, and prediction phishing bias.
+
+Run training, evaluation, and image rendering as one automated flow:
+
+```bash
+scripts/run_train_eval_report.sh model-b b_smoke_qwen8b_quality_002
+scripts/run_train_eval_report.sh b-improved b_improved_qwen8b_001
+scripts/run_train_eval_report.sh model-c c_smoke_qwen8b_quality_002
+scripts/run_train_eval_report.sh model-d d_smoke_qwen8b_label_aware_001
+```
+
+Smoke-test the full flow with tiny TextAttack budgets:
+
+```bash
+scripts/run_train_eval_report.sh model-c c_debug_001 --max-examples 10
+```
+
+Resume an interrupted automated run:
+
+```bash
+scripts/run_train_eval_report.sh model-c c_smoke_qwen8b_quality_002 --resume
 ```
 
 ## Where Things Go

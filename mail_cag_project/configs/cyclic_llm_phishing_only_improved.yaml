@@ -1,9 +1,9 @@
-name: model_b_llm_phishing_only
-description: Model B - cyclic ALBERT trained with LLM rewrites for phishing-labeled emails only.
+name: model_b_improved_llm_phishing_only
+description: Model B Improved - cyclic ALBERT trained with improved label-aware LLM phishing rewrites only.
 
 research_question: >
-  Does LLM-generated cyclic adversarial training improve ALBERT robustness when
-  the LLM only rewrites phishing-labeled examples?
+  Does an improved phishing-specific rewrite prompt make phishing-only cyclic
+  adversarial training more robust while preserving clean benign performance?
 
 data:
   raw_path: ../../data/processed/CEAS_08_en_1600.csv
@@ -28,7 +28,7 @@ training:
 attacks:
   training_attackers:
     - llm_rewrite
-  rewrite_scope: phishing_only
+  rewrite_scope: phishing_only_improved
   target_labels:
     - 1
   candidates_per_email: 1
@@ -40,6 +40,7 @@ attacks:
 llm:
   provider: ollama
   model: qwen3:8b
+  prompt_style: label_aware_v2
   cache_enabled: true
   fallback_models:
     - qwen3:14b
@@ -57,5 +58,5 @@ evaluation:
   llm_held_out: true
 
 paths:
-  run_root: ../../runs/model_b_llm_phishing_only
-  rewrite_cache: ../../data/cache/shared_llm_rewrite_cache.csv
+  run_root: ../../runs/model_b_improved_llm_phishing_only
+  rewrite_cache: ../../data/cache/model_b_improved_llm_rewrite_cache.csv

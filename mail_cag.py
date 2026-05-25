@@ -23,10 +23,26 @@ DEFAULT_CONFIGS = {
     / "mail_cag_project"
     / "configs"
     / "cyclic_llm_phishing_only.yaml",
+    "b-improved": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_phishing_only_improved.yaml",
+    "model-b-improved": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_phishing_only_improved.yaml",
     "model-c": PROJECT_ROOT
     / "mail_cag_project"
     / "configs"
     / "cyclic_llm_both_labels.yaml",
+    "model-d": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_both_labels_label_aware.yaml",
+    "label-aware": PROJECT_ROOT
+    / "mail_cag_project"
+    / "configs"
+    / "cyclic_llm_both_labels_label_aware.yaml",
     "both-labels": PROJECT_ROOT
     / "mail_cag_project"
     / "configs"
@@ -86,6 +102,11 @@ def evaluate(
     config_name: str,
     run_id: str | None,
     round_number: int | None,
+    all_rounds: bool,
+    attacks: list[str] | None,
+    generate_adversarial: bool,
+    max_examples: int | None,
+    overwrite: bool,
 ) -> None:
     ensure_import_path()
 
@@ -95,6 +116,11 @@ def evaluate(
         resolve_config(config_name),
         run_id=run_id,
         round_number=round_number,
+        all_rounds=all_rounds,
+        attacks=attacks,
+        generate_adversarial=generate_adversarial,
+        max_examples=max_examples,
+        overwrite=overwrite,
     )
 
 
@@ -113,8 +139,9 @@ def main() -> None:
         nargs="?",
         default="cyclic",
         help=(
-            "One of baseline/model-a, model-b/phishing-only, "
-            "model-c/both-labels, cyclic, v5, v4-legacy, or a config path. "
+            "One of baseline/model-a, model-b/phishing-only, b-improved, "
+            "model-c/both-labels, model-d/label-aware, cyclic, v5, "
+            "v4-legacy, or a config path. "
             "Default: cyclic."
         ),
     )
@@ -128,8 +155,9 @@ def main() -> None:
         nargs="?",
         default="cyclic",
         help=(
-            "One of baseline/model-a, model-b/phishing-only, "
-            "model-c/both-labels, cyclic, v5, or a config path. Default: cyclic."
+            "One of baseline/model-a, model-b/phishing-only, b-improved, "
+            "model-c/both-labels, model-d/label-aware, cyclic, v5, "
+            "or a config path. Default: cyclic."
         ),
     )
     run_parser.add_argument(
@@ -155,8 +183,9 @@ def main() -> None:
         nargs="?",
         default="cyclic",
         help=(
-            "One of baseline/model-a, model-b/phishing-only, "
-            "model-c/both-labels, cyclic, v5, or a config path. Default: cyclic."
+            "One of baseline/model-a, model-b/phishing-only, b-improved, "
+            "model-c/both-labels, model-d/label-aware, cyclic, v5, "
+            "or a config path. Default: cyclic."
         ),
     )
     evaluate_parser.add_argument(
@@ -168,6 +197,33 @@ def main() -> None:
         type=int,
         dest="round_number",
         help="Round number to evaluate. Defaults to the latest completed round.",
+    )
+    evaluate_parser.add_argument(
+        "--all-rounds",
+        action="store_true",
+        help="Evaluate every completed round in this run.",
+    )
+    evaluate_parser.add_argument(
+        "--generate-adversarial",
+        action="store_true",
+        help="Generate TextAttack adversarial eval sets before scoring them.",
+    )
+    evaluate_parser.add_argument(
+        "--attacks",
+        nargs="+",
+        default=None,
+        help="TextAttack recipes to use: textfooler pwws deepwordbug.",
+    )
+    evaluate_parser.add_argument(
+        "--max-examples",
+        type=int,
+        default=None,
+        help="Limit the number of clean eval examples attacked per recipe.",
+    )
+    evaluate_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Regenerate adversarial eval files even when existing files are present.",
     )
 
     args = parser.parse_args()
@@ -186,7 +242,16 @@ def main() -> None:
         return
 
     if args.command == "evaluate":
-        evaluate(args.config, run_id=args.run_id, round_number=args.round_number)
+        evaluate(
+            args.config,
+            run_id=args.run_id,
+            round_number=args.round_number,
+            all_rounds=args.all_rounds,
+            attacks=args.attacks,
+            generate_adversarial=args.generate_adversarial,
+            max_examples=args.max_examples,
+            overwrite=args.overwrite,
+        )
         return
 
     parser.error(f"Unknown command: {args.command}")

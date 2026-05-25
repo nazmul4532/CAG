@@ -1,0 +1,105 @@
+% Paste these replacements into the ICML paper.
+% They update the dataset description to match the actual preprocessing code
+% and explicitly identify the reported Model B run as the old Model B run.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Replace: \section{Dataset}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Dataset}
+For this study, we use the CEAS\_08 phishing email corpus~\cite{alam2024phishing}. The raw file used in our repository contains email metadata and text fields including sender, receiver, date, subject, body, URL information, and a binary label where label~1 denotes phishing/spam and label~0 denotes legitimate email. Since raw email corpora contain multilingual, malformed, and extremely long messages, we first construct a filtered English-only working corpus before any train/evaluation split is created.
+
+The preparation pipeline has four stages:
+
+\textbf{(1) Text assembly.} The subject and body fields are concatenated into a single classifier input:
+\[
+  \texttt{Subject: \{subject\}\textbackslash n\textbackslash n\{body\}}.
+\]
+This same \texttt{text} field is used for classifier training, LLM rewriting, and held-out adversarial evaluation.
+
+\textbf{(2) Language filtering.} We apply \texttt{langdetect} to the assembled text and keep only messages detected as English. The language detector seed is fixed to 42 for reproducibility.
+
+\textbf{(3) Non-English script filtering.} We remove messages containing obvious non-English writing systems, including Greek, Cyrillic, Hebrew, Arabic, Devanagari, Thai, Japanese Hiragana/Katakana, CJK characters, and Hangul. This step removes script-level noise that can otherwise dominate tokenizer behavior without contributing to the English phishing-detection task.
+
+\textbf{(4) Token-length filtering.} We tokenize each message with the defender tokenizer, \texttt{albert-base-v2}, without truncation and discard emails longer than 1,600 tokens. This keeps all retained emails within a bounded length regime while preserving substantially more context than the model's training-time 512-token window.
+
+After filtering, the prepared corpus contains 37,354 emails: 15,646 legitimate emails and 21,708 phishing emails. The median token length is 144 tokens, with 78.28\% of messages fitting within 512 ALBERT tokens and all retained messages fitting within the 1,600-token preparation cap. The final prepared file is \texttt{data/processed/CEAS\_08\_en\_1600.csv}.
+
+Due to computational constraints from local LLM rewriting and TextAttack evaluation, each experiment uses a stratified 6\% sample from the prepared corpus. Sampling is performed independently per class with random seed 42, producing 2,241 total examples: 939 legitimate and 1,302 phishing. This sampled working set is then split into fixed 80\% training and 20\% evaluation partitions using stratified sampling. The resulting clean training set has 1,792 emails and the clean evaluation set has 449 emails.
+
+\begin{table}[t]
+  \caption{Prepared CEAS\_08 corpus and 6\% experimental subset after filtering.}
+  \label{tab:dataset_summary}
+  \begin{center}
+    \begin{small}
+      \begin{sc}
+        \begin{tabular}{lrr}
+          \toprule
+          Email Class & Filtered Corpus & 6\% Subset \\
+          \midrule
+          Legitimate / benign & 15,646 & 939 \\
+          Phishing / spam     & 21,708 & 1,302 \\
+          Total               & 37,354 & 2,241 \\
+          \bottomrule
+        \end{tabular}
+      \end{sc}
+    \end{small}
+  \end{center}
+  \vskip -0.1in
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Replace/adjust in Experiments: LLM Attacker paragraph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{LLM Attacker}
+The training-time attacker is a local \textbf{Ollama} instance running \textbf{qwen3:8b}. Unlike TextAttack-based attackers, the LLM attacker generates \emph{full-text rewrites} rather than local word- or character-level substitutions. It operates entirely offline. Two fallback models (\texttt{qwen3:14b} and \texttt{qwen3:4b}) are configured if the primary model is unavailable. Key attacker settings are temperature $=0.6$, top-$p=0.9$, and request timeout $=300$\,s.
+
+For the old Model~B run reported in this paper, the LLM prompt asks for a label-preserving rewrite of each phishing email. The prompt instructs the model to preserve the original phishing label, core intent, URL behavior, suspicious style, and language, while avoiding new URLs, credentials, brands, phone numbers, attachments, or payment instructions. The email text passed to the LLM is first truncated to the defender-visible 512-token window, so the attacker only rewrites the portion of the email the classifier can actually process.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Replace/adjust: Model Variants subsection
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Model Variants}
+This paper reports the old \textbf{Model B} configuration, corresponding to run \texttt{b\_smoke\_qwen8b\_quality\_001}. This run is retained as the primary analysis because it completed the full four-round phishing-only cyclic experiment and generated held-out adversarial evaluation sets for TextFooler, PWWS, and DeepWordBug.
+
+\textbf{Model A (Baseline).} ALBERT trained on \texttt{clean\_train} only, with no adversarial augmentation. It serves as the reference point for clean-data performance.
+
+\textbf{Old Model B (Phishing-Only Cyclic).} Cyclic ALBERT with LLM rewrites targeting phishing emails only (label~1). The classifier is still trained on both benign and phishing labels, but only phishing examples are augmented by the LLM attacker. The run uses four training rounds. This configuration tests whether phishing-focused LLM augmentation improves robustness against held-out attackers.
+
+\textbf{Model C (Both-Labels Cyclic).} Cyclic ALBERT with LLM rewrites targeting both phishing (label~1) and benign (label~0) emails. Model C is conceptually intended to test whether symmetric rewriting prevents the defender from learning ``LLM-rewritten text $\Rightarrow$ phishing'' as a shortcut, but its corrected rerun is left for future reporting.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Optional insertion after Cyclic Training Loop or before Results
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Reported Old Model B Run}
+The reported results use the old Model~B run \texttt{b\_smoke\_qwen8b\_quality\_001}. The rewrite acceptance threshold is $\tau=0.0$, so a generated rewrite is admitted to the next training pool when:
+\[
+  \Delta \text{confidence}
+  =
+  p_\theta(y_{\mathrm{true}}\mid x_{\mathrm{source}})
+  -
+  p_\theta(y_{\mathrm{true}}\mid x_{\mathrm{rewrite}})
+  \geq 0.
+\]
+In other words, a rewrite is accepted if it does not make the current defender more confident in the true label. The accepted rewrite counts for the generated rounds were 507/1041 in Round~1, 301/507 in Round~2, and 905/1848 in Round~3. Round~4 is the final trained model and therefore does not generate another training-rewrite set.
+
+We note that this old run predates a later cache-materialisation fix. The issue affected how cached LLM responses were written into per-round \texttt{generated\_rewrites.csv} files. For old Model~B, the issue did not remove an entire class because the rewrite target was phishing-only, but it does mean Round~2's generated rewrite count is lower than the number of selected phishing sources. The run remains useful as a completed phishing-only cyclic baseline, while newer reruns are used for corrected follow-up experiments.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Replace/adjust in Held-Out Attackers table
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% In Table~\ref{tab:attackers}, update the qwen row to:
+% qwen3:8b & LLM full rewrite & Training (old Model B) \\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Small Results intro replacement
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Results}
+\label{sec:results}
+
+We report results for \textbf{old Model B} (\texttt{b\_smoke\_qwen8b\_quality\_001}), a phishing-only cyclic LLM-rewrite run trained for four rounds. The model is trained on both classes in every round, but the LLM augmentation targets only phishing-labeled emails. Results for corrected Model~B reruns, Model~C, and Model~D will be reported separately once their full held-out adversarial evaluation has completed.

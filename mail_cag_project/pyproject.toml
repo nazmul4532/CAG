@@ -12,9 +12,12 @@ dependencies = [
   "pandas",
   "langdetect",
   "scikit-learn",
+  "matplotlib",
+  "seaborn",
   "torch",
   "tqdm",
   "transformers",
+  "textattack",
 ]
 
 [tool.setuptools.packages.find]

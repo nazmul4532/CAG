@@ -196,6 +196,10 @@ def generate_round_rewrites(
     target_labels = {int(label) for label in attacks["target_labels"]}
     max_examples = attacks.get("max_examples_per_round")
     max_examples = None if max_examples is None else int(max_examples)
+    max_examples_per_label = attacks.get("max_examples_per_label_per_round")
+    max_examples_per_label = (
+        None if max_examples_per_label is None else int(max_examples_per_label)
+    )
     selection_rule = attacks.get("rewrite_selection_rule", "all")
     candidates = int(attacks["candidates_per_email"])
     max_length = int(config["model"]["max_length"])
@@ -210,6 +214,8 @@ def generate_round_rewrites(
         model_dir=model_dir,
         selection_rule=selection_rule,
         max_examples=max_examples,
+        max_examples_per_label=max_examples_per_label,
+        random_seed=int(config["data"].get("random_seed", 42)) + round_sort_key(round_dir),
         max_length=max_length,
         batch_size=eval_batch_size,
     )
@@ -221,6 +227,7 @@ def generate_round_rewrites(
         candidates=candidates,
         temperature=temperature,
         top_p=top_p,
+        prompt_style=str(llm.get("prompt_style", "legacy")),
     )
     selected.to_csv(round_dir / "rewrite_source.csv", index=False)
 
@@ -253,11 +260,10 @@ def generate_round_rewrites(
             candidates=candidates,
             temperature=temperature,
             top_p=top_p,
+            prompt_style=str(llm.get("prompt_style", "legacy")),
         )
         if from_cache:
             cache_hits += 1
-            progress.set_postfix(generated=len(rows), cached=cache_hits, saved=last_saved)
-            continue
 
         rows.extend(make_rewrite_rows(
             row=row,
@@ -272,10 +278,11 @@ def generate_round_rewrites(
     generated_df = pd.DataFrame(rows)
     if not generated_df.empty:
         generated_df["generated_index"] = range(len(generated_df))
+    validate_rewrite_label_coverage(selected, generated_df, round_dir)
     write_rewrites(output_path, generated_df)
     last_saved = len(rows)
     print(f"saved rewrites: {last_saved}")
-    print(f"cache hits skipped: {cache_hits}")
+    print(f"cache hits reused: {cache_hits}")
     print(f"round rewrites: {len(rows)}")
 
     if generated_df.empty:
@@ -306,6 +313,33 @@ def generate_round_rewrites(
     return training_rewrites
 
 
+def validate_rewrite_label_coverage(
+    selected: pd.DataFrame,
+    generated_df: pd.DataFrame,
+    round_dir: Path,
+) -> None:
+    """Fail loudly if a round silently drops an entire target label."""
+
+    if selected.empty:
+        return
+
+    expected_labels = set(selected["label"].astype(int).unique())
+    generated_labels = (
+        set(generated_df["label"].astype(int).unique())
+        if "label" in generated_df
+        else set()
+    )
+    missing_labels = sorted(expected_labels - generated_labels)
+    if missing_labels:
+        raise RuntimeError(
+            "Rewrite generation dropped whole label(s) "
+            f"{missing_labels} in {round_dir}. "
+            f"Expected labels {sorted(expected_labels)}, got {sorted(generated_labels)}. "
+            "This usually means cached rewrites were not materialized into the "
+            "round output; do not continue this run."
+        )
+
+
 def select_rewrite_sources(
     *,
     source_df: pd.DataFrame,
@@ -313,6 +347,8 @@ def select_rewrite_sources(
     model_dir: Path,
     selection_rule: str,
     max_examples: int | None,
+    max_examples_per_label: int | None,
+    random_seed: int,
     max_length: int,
     batch_size: int,
 ) -> pd.DataFrame:
@@ -327,6 +363,21 @@ def select_rewrite_sources(
     )
     if selection_rule == "all":
         return scored
+
+    if selection_rule == "balanced_random":
+        if scored.empty:
+            return scored
+        group_sizes = scored.groupby("label").size()
+        per_label = min(group_sizes.min(), max_examples_per_label or group_sizes.min())
+        sampled = (
+            scored.groupby("label", group_keys=False)
+            .sample(n=int(per_label), random_state=random_seed)
+            .sort_values(["label", "parent_id"])
+            .reset_index(drop=True)
+        )
+        if max_examples is not None:
+            return sampled.head(max_examples)
+        return sampled
 
     if selection_rule == "lowest_true_label_confidence":
         ordered = scored.sort_values("true_label_confidence")
@@ -344,6 +395,7 @@ def add_rewrite_request_metadata(
     candidates: int,
     temperature: float,
     top_p: float,
+    prompt_style: str,
 ) -> pd.DataFrame:
     """Record the exact LLM request used for each selected parent row."""
 
@@ -364,6 +416,7 @@ def add_rewrite_request_metadata(
             temperature=temperature,
             top_p=top_p,
             parent_id=str(parent_id),
+            prompt_style=prompt_style,
         )
         for label, text, parent_id in zip(
             result["label"],
@@ -385,6 +438,7 @@ def get_or_create_rewrites(
     candidates: int,
     temperature: float,
     top_p: float,
+    prompt_style: str,
 ) -> tuple[list[str], bool]:
     cache_key = rewrite_cache_key(
         model=model,
@@ -394,6 +448,7 @@ def get_or_create_rewrites(
         temperature=temperature,
         top_p=top_p,
         parent_id=parent_id,
+        prompt_style=prompt_style,
     )
     cached = cache.get(cache_key)
     if cached is not None:
@@ -407,9 +462,15 @@ def get_or_create_rewrites(
         candidates=candidates,
         temperature=temperature,
         top_p=top_p,
+        prompt_style=prompt_style,
     )
     cache.put(cache_key, rewrites)
     return rewrites, False
+
+
+def round_sort_key(path: Path) -> int:
+    suffix = path.name.removeprefix("round_")
+    return int(suffix) if suffix.isdigit() else 0
 
 
 def make_rewrite_cache(
